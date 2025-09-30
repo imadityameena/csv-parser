@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# dotenv files
+.env
+.env.*.local
+
+# TypeScript cache
+*.tsbuildinfo
+
+# IDE configs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Test coverage
+coverage/
+
+# Output from coverage tools like jest, c8
+*.lcov
+
+# Mac metadata files
+._*
+
+# Optional: ignore lock files (if using only one package manager consistently)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
