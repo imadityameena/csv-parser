@@ -3,7 +3,7 @@ type Severity = 'HIGH' | 'MEDIUM' | 'LOW';
 export interface Violation {
   dataset: 'op_billing' | 'doctor_roster';
   row: number;
-  rule: `R${1|2|3|4|5|6|7|8|9|10}` | string;
+  rule: `R${1|2|3|4|5|6|7|8|9|10}`;
   severity: Severity;
   reason: string;
 }
@@ -137,37 +137,6 @@ export function runCompliance(opBilling: any[], doctorRoster: any[]): Compliance
     const validPayers = ['CASH', 'INSURANCE', 'GOVT'];
     pushIf(!(payerType && validPayers.includes(payerType)), { dataset: 'op_billing', row: rowNum, rule: 'R10', severity: 'LOW', reason: `Invalid Payer_Type: ${row?.Payer_Type}` }, violations);
 
-    // R11 (HIGH): Off-Shift Billing Validation - Visit_Date must be within doctor's shift hours
-    if (doctor && visitDate) {
-      const visitTime = new Date(visitDate);
-      const visitHour = visitTime.getHours();
-      const visitMinute = visitTime.getMinutes();
-      const visitTimeMinutes = visitHour * 60 + visitMinute;
-      
-      // Parse shift times
-      const shiftStartParts = doctor.Shift_Start?.split(':') || ['00', '00'];
-      const shiftEndParts = doctor.Shift_End?.split(':') || ['23', '59'];
-      const shiftStartMinutes = parseInt(shiftStartParts[0]) * 60 + parseInt(shiftStartParts[1]);
-      const shiftEndMinutes = parseInt(shiftEndParts[0]) * 60 + parseInt(shiftEndParts[1]);
-      
-      let isWithinShift = false;
-      
-      // Handle normal shifts (e.g., 08:00-17:00)
-      if (shiftStartMinutes <= shiftEndMinutes) {
-        isWithinShift = visitTimeMinutes >= shiftStartMinutes && visitTimeMinutes <= shiftEndMinutes;
-      } else {
-        // Handle overnight shifts (e.g., 22:00-06:00)
-        isWithinShift = visitTimeMinutes >= shiftStartMinutes || visitTimeMinutes <= shiftEndMinutes;
-      }
-      
-      pushIf(!isWithinShift, { 
-        dataset: 'op_billing', 
-        row: rowNum, 
-        rule: 'R11', 
-        severity: 'HIGH', 
-        reason: `Visit outside shift hours: Visit at ${visitHour.toString().padStart(2, '0')}:${visitMinute.toString().padStart(2, '0')}, Doctor shift: ${doctor.Shift_Start}-${doctor.Shift_End}` 
-      }, violations);
-    }
 
     // Accumulate for summaries
     if (Number.isFinite(amount)) {
@@ -176,9 +145,23 @@ export function runCompliance(opBilling: any[], doctorRoster: any[]): Compliance
     }
     if (payerType) payerDistribution[payerType] = (payerDistribution[payerType] || 0) + 1;
 
-    // Build joined record
-    analysisView.push({ ...row, _doctor: doctor || null });
+    // Build joined record with doctor name at top level for easier access
+    analysisView.push({ 
+      ...row, 
+      _doctor: doctor || null,
+      Doctor_Name: doctor?.Doctor_Name || row.Doctor_Name || `Doctor ${rowNum}`
+    });
   });
+
+  // Debug: Show sample of joined data
+  if (analysisView.length > 0) {
+    console.log('🔗 Sample joined record:', {
+      Doctor_ID: analysisView[0].Doctor_ID,
+      Doctor_Name: analysisView[0].Doctor_Name,
+      Patient_Name: analysisView[0].Patient_Name,
+      hasDoctorData: !!analysisView[0]._doctor
+    });
+  }
 
   // Risk score
   const riskScore = violations.reduce((sum, v) => sum + severityWeight[v.severity], 0);

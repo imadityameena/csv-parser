@@ -238,7 +238,7 @@ export const ComplianceFileUpload: React.FC<ComplianceFileUploadProps> = ({ onFi
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Badge variant="destructive">HIGH</Badge>
-                <span className="text-sm font-medium">R1-R8, R11: Critical Rules</span>
+                <span className="text-sm font-medium">R1-R8: Critical Rules</span>
               </div>
               <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1 ml-4">
                 <li>• Patient_ID validation & uniqueness</li>
@@ -249,7 +249,6 @@ export const ComplianceFileUpload: React.FC<ComplianceFileUploadProps> = ({ onFi
                 <li>• Procedure code validation</li>
                 <li>• Amount range validation</li>
                 <li>• Consent flag for OP300</li>
-                <li>• Off-shift billing validation (R11)</li>
               </ul>
             </div>
             <div className="space-y-2">

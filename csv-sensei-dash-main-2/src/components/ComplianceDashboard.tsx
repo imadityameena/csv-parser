@@ -38,6 +38,45 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       console.log('Doctor Roster Data:', doctorRosterData?.length, 'records');
       console.log('Sample billing record:', opBillingData?.[0]);
       console.log('Sample doctor record:', doctorRosterData?.[0]);
+      
+      // Debug: Show all available column names in the CSV files
+      if (opBillingData && opBillingData.length > 0) {
+        console.log('📋 Available columns in billing CSV:', Object.keys(opBillingData[0]));
+        
+        // Auto-detect potential column mappings
+        const billingColumns = Object.keys(opBillingData[0]);
+        const potentialDoctorNameCols = billingColumns.filter(col => 
+          col.toLowerCase().includes('doctor') || 
+          col.toLowerCase().includes('physician') || 
+          col.toLowerCase().includes('provider') ||
+          col.toLowerCase().includes('staff') ||
+          (col.toLowerCase().includes('name') && !col.toLowerCase().includes('patient'))
+        );
+        const potentialPatientNameCols = billingColumns.filter(col => 
+          col.toLowerCase().includes('patient') || 
+          col.toLowerCase().includes('client') || 
+          col.toLowerCase().includes('customer') ||
+          (col.toLowerCase().includes('name') && col.toLowerCase().includes('patient'))
+        );
+        
+        console.log('🎯 Potential Doctor Name columns:', potentialDoctorNameCols);
+        console.log('🎯 Potential Patient Name columns:', potentialPatientNameCols);
+      }
+      if (doctorRosterData && doctorRosterData.length > 0) {
+        console.log('📋 Available columns in doctor CSV:', Object.keys(doctorRosterData[0]));
+        
+        // Auto-detect potential column mappings for doctor roster
+        const doctorColumns = Object.keys(doctorRosterData[0]);
+        const potentialDoctorNameCols = doctorColumns.filter(col => 
+          col.toLowerCase().includes('doctor') || 
+          col.toLowerCase().includes('physician') || 
+          col.toLowerCase().includes('provider') ||
+          col.toLowerCase().includes('staff') ||
+          col.toLowerCase().includes('name')
+        );
+        
+        console.log('🎯 Potential Doctor Name columns in roster:', potentialDoctorNameCols);
+      }
       console.log('Billing Data Fields:', opBillingData?.[0] ? Object.keys(opBillingData[0]) : 'No data');
       console.log('Doctor Data Fields:', doctorRosterData?.[0] ? Object.keys(doctorRosterData[0]) : 'No data');
       
@@ -77,40 +116,164 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       }
       
       // Transform data to match expected field names for compliance analysis
-      const transformedBillingData = opBillingData.map((row, index) => ({
-        Bill_ID: row.Bill_ID || row.bill_id || row.BillId || row.id || `bill_${index + 1}`,
-        Bill_Date: row.Bill_Date || row.bill_date || row.BillDate || row.date || row.Visit_Date || row.visit_date || new Date().toISOString().split('T')[0],
-        Patient_ID: row.Patient_ID || row.patient_id || row.PatientId || row.patient || `P${String(index + 1).padStart(3, '0')}`,
-        Patient_Name: row.Patient_Name || row.patient_name || row.PatientName || row.patient_name || `Patient ${index + 1}`,
-        Doctor_ID: row.Doctor_ID || row.doctor_id || row.DoctorId || row.doctor || `D${String(index + 1).padStart(3, '0')}`,
-        Doctor_Name: row.Doctor_Name || row.doctor_name || row.DoctorName || row.doctor_name || `Dr. Smith ${index + 1}`,
-        Department: row.Department || row.department || 'General',
-        Service_Code: row.Service_Code || row.service_code || row.ServiceCode || row.Procedure_Code || row.procedure_code || 'OP100',
-        Service_Description: row.Service_Description || row.service_description || row.ServiceDescription || row.Procedure_Code || 'General Consultation',
-        Quantity: parseInt(row.Quantity || row.quantity || 1),
-        Unit_Price: parseFloat(row.Unit_Price || row.unit_price || row.UnitPrice || row.Amount || row.amount || 100),
-        Total_Amount: parseFloat(row.Total_Amount || row.total_amount || row.TotalAmount || row.Amount || row.amount || 100),
-        Payment_Status: row.Payment_Status || row.payment_status || row.PaymentStatus || 'Pending',
-        Visit_ID: row.Visit_ID || row.visit_id || row.VisitId || row.visit || `visit_${index + 1}`,
-        Visit_Date: row.Visit_Date || row.visit_date || row.VisitDate || row.date || row.Bill_Date || new Date().toISOString().split('T')[0],
-        Age: parseInt(row.Age || row.age || 30),
-        Procedure_Code: row.Procedure_Code || row.procedure_code || row.ProcedureCode || row.Service_Code || row.service_code || 'OP100',
-        Consent_Flag: (row.Consent_Flag || row.consent_flag || row.ConsentFlag || 'Y').toString().toUpperCase(),
-        Payer_Type: (row.Payer_Type || row.payer_type || row.PayerType || 'CASH').toString().toUpperCase()
-      }));
+      const transformedBillingData = opBillingData.map((row, index) => {
+        // Helper function to find field value with flexible mapping
+        const getFieldValue = (possibleNames: string[], fallback?: any) => {
+          // First try exact matches
+          for (const name of possibleNames) {
+            if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+              return row[name];
+            }
+          }
+          
+          // Then try case-insensitive matches
+          const rowKeys = Object.keys(row);
+          for (const name of possibleNames) {
+            const foundKey = rowKeys.find(key => 
+              key.toLowerCase() === name.toLowerCase() || 
+              key.toLowerCase().replace(/[_\s-]/g, '') === name.toLowerCase().replace(/[_\s-]/g, '')
+            );
+            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
+              return row[foundKey];
+            }
+          }
+          
+          // Try partial matches for common patterns
+          for (const name of possibleNames) {
+            const searchTerm = name.toLowerCase().replace(/[_\s-]/g, '');
+            const foundKey = rowKeys.find(key => {
+              const keyNormalized = key.toLowerCase().replace(/[_\s-]/g, '');
+              return keyNormalized.includes(searchTerm) || searchTerm.includes(keyNormalized);
+            });
+            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
+              return row[foundKey];
+            }
+          }
+          
+          return fallback;
+        };
 
-      const transformedDoctorData = doctorRosterData.map((row, index) => ({
-        Doctor_ID: row.Doctor_ID || row.doctor_id || row.DoctorId || row.id || `D${String(index + 1).padStart(3, '0')}`,
-        Doctor_Name: row.Doctor_Name || row.doctor_name || row.DoctorName || row.name || `Dr. Smith ${index + 1}`,
-        Specialization: row.Specialty || row.specialty || row.Specialization || row.specialization || 'General',
-        Department: row.Department || row.department || 'General',
-        License_Expiry: row.License_Expiry || row.license_expiry || row.LicenseExpiry || row.license_expiry || '2025-12-31',
-        Shift_Start: row.Shift_Start || row.shift_start || row.ShiftStart || '08:00',
-        Shift_End: row.Shift_End || row.shift_end || row.ShiftEnd || '17:00'
-      }));
+        return {
+          Bill_ID: getFieldValue(['Bill_ID', 'bill_id', 'BillId', 'id'], `bill_${index + 1}`),
+          Bill_Date: getFieldValue(['Bill_Date', 'bill_date', 'BillDate', 'date', 'Visit_Date', 'visit_date'], new Date().toISOString().split('T')[0]),
+          Patient_ID: getFieldValue(['Patient_ID', 'patient_id', 'PatientId', 'patient'], `P${String(index + 1).padStart(3, '0')}`),
+          Patient_Name: getFieldValue([
+            'Patient_Name', 'patient_name', 'PatientName', 'patient_name', 'Patient', 'patient', 'PATIENT',
+            'Name', 'name', 'NAME', 'Full_Name', 'full_name', 'FullName', 'fullname',
+            'Client_Name', 'client_name', 'ClientName', 'clientname',
+            'Customer_Name', 'customer_name', 'CustomerName', 'customername'
+          ], `Patient ${index + 1}`),
+          Doctor_ID: getFieldValue(['Doctor_ID', 'doctor_id', 'DoctorId', 'doctor'], `D${String(index + 1).padStart(3, '0')}`),
+          Doctor_Name: getFieldValue([
+            'Doctor_Name', 'doctor_name', 'DoctorName', 'doctor_name', 'Doctor', 'doctor', 'DOCTOR',
+            'Name', 'name', 'NAME', 'Dr_Name', 'dr_name', 'DrName', 'drname',
+            'Physician_Name', 'physician_name', 'PhysicianName', 'physicianname',
+            'Provider_Name', 'provider_name', 'ProviderName', 'providername',
+            'Staff_Name', 'staff_name', 'StaffName', 'staffname'
+          ], `Doctor ${index + 1}`),
+          Department: getFieldValue(['Department', 'department'], 'General'),
+          Service_Code: getFieldValue(['Service_Code', 'service_code', 'ServiceCode', 'Procedure_Code', 'procedure_code'], 'OP100'),
+          Service_Description: getFieldValue(['Service_Description', 'service_description', 'ServiceDescription', 'Procedure_Code'], 'General Consultation'),
+          Quantity: parseInt(getFieldValue(['Quantity', 'quantity'], 1)),
+          Unit_Price: parseFloat(getFieldValue(['Unit_Price', 'unit_price', 'UnitPrice', 'Amount', 'amount'], 100)),
+          Total_Amount: parseFloat(getFieldValue(['Total_Amount', 'total_amount', 'TotalAmount', 'Amount', 'amount'], 100)),
+          Payment_Status: getFieldValue(['Payment_Status', 'payment_status', 'PaymentStatus'], 'Pending'),
+          Visit_ID: getFieldValue(['Visit_ID', 'visit_id', 'VisitId', 'visit'], `visit_${index + 1}`),
+          Visit_Date: getFieldValue(['Visit_Date', 'visit_date', 'VisitDate', 'date', 'Bill_Date'], new Date().toISOString().split('T')[0]),
+          Age: parseInt(getFieldValue(['Age', 'age'], 30)),
+          Procedure_Code: getFieldValue(['Procedure_Code', 'procedure_code', 'ProcedureCode', 'Service_Code', 'service_code'], 'OP100'),
+          Consent_Flag: (getFieldValue(['Consent_Flag', 'consent_flag', 'ConsentFlag'], 'Y')).toString().toUpperCase(),
+          Payer_Type: (getFieldValue(['Payer_Type', 'payer_type', 'PayerType'], 'CASH')).toString().toUpperCase()
+        };
+      });
+
+      const transformedDoctorData = doctorRosterData.map((row, index) => {
+        // Helper function to find field value with flexible mapping
+        const getFieldValue = (possibleNames: string[], fallback?: any) => {
+          // First try exact matches
+          for (const name of possibleNames) {
+            if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+              return row[name];
+            }
+          }
+          
+          // Then try case-insensitive matches
+          const rowKeys = Object.keys(row);
+          for (const name of possibleNames) {
+            const foundKey = rowKeys.find(key => 
+              key.toLowerCase() === name.toLowerCase() || 
+              key.toLowerCase().replace(/[_\s-]/g, '') === name.toLowerCase().replace(/[_\s-]/g, '')
+            );
+            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
+              return row[foundKey];
+            }
+          }
+          
+          // Try partial matches for common patterns
+          for (const name of possibleNames) {
+            const searchTerm = name.toLowerCase().replace(/[_\s-]/g, '');
+            const foundKey = rowKeys.find(key => {
+              const keyNormalized = key.toLowerCase().replace(/[_\s-]/g, '');
+              return keyNormalized.includes(searchTerm) || searchTerm.includes(keyNormalized);
+            });
+            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
+              return row[foundKey];
+            }
+          }
+          
+          return fallback;
+        };
+
+        return {
+          Doctor_ID: getFieldValue(['Doctor_ID', 'doctor_id', 'DoctorId', 'id'], `D${String(index + 1).padStart(3, '0')}`),
+          Doctor_Name: getFieldValue([
+            'Doctor_Name', 'doctor_name', 'DoctorName', 'name', 'Name', 'NAME',
+            'Doctor', 'doctor', 'DOCTOR', 'Dr_Name', 'dr_name', 'DrName', 'drname',
+            'Physician_Name', 'physician_name', 'PhysicianName', 'physicianname',
+            'Provider_Name', 'provider_name', 'ProviderName', 'providername',
+            'Staff_Name', 'staff_name', 'StaffName', 'staffname'
+          ], `Doctor ${index + 1}`),
+          Specialization: getFieldValue(['Specialty', 'specialty', 'Specialization', 'specialization'], 'General'),
+          Department: getFieldValue(['Department', 'department'], 'General'),
+          License_Expiry: getFieldValue(['License_Expiry', 'license_expiry', 'LicenseExpiry', 'license_expiry'], '2025-12-31'),
+          Shift_Start: getFieldValue(['Shift_Start', 'shift_start', 'ShiftStart'], '08:00'),
+          Shift_End: getFieldValue(['Shift_End', 'shift_end', 'ShiftEnd'], '17:00')
+        };
+      });
 
       console.log('Transformed Billing Data Sample:', transformedBillingData[0]);
       console.log('Transformed Doctor Data Sample:', transformedDoctorData[0]);
+      
+      // Debug: Show which columns were successfully mapped
+      if (transformedBillingData.length > 0) {
+        const sample = transformedBillingData[0];
+        console.log('🔍 Billing Data Mapping Results:');
+        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', sample.Doctor_Name.startsWith('Doctor '), ')');
+        console.log('  Patient_Name found:', sample.Patient_Name, '(fallback used:', sample.Patient_Name.startsWith('Patient '), ')');
+        console.log('  Total_Amount found:', sample.Total_Amount);
+      }
+      
+      if (transformedDoctorData.length > 0) {
+        const sample = transformedDoctorData[0];
+        console.log('🔍 Doctor Data Mapping Results:');
+        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', sample.Doctor_Name.startsWith('Doctor '), ')');
+        console.log('  Specialization found:', sample.Specialization);
+      }
+      
+      // Check if we're using fallback data and warn the user
+      const hasRealDoctorNames = transformedDoctorData.some(doc => 
+        doc.Doctor_Name && !doc.Doctor_Name.startsWith('Doctor ')
+      );
+      const hasRealPatientNames = transformedBillingData.some(bill => 
+        bill.Patient_Name && !bill.Patient_Name.startsWith('Patient ')
+      );
+      
+      if (!hasRealDoctorNames) {
+        console.warn('⚠️ No real doctor names found in CSV data. Using fallback names.');
+      }
+      if (!hasRealPatientNames) {
+        console.warn('⚠️ No real patient names found in CSV data. Using fallback names.');
+      }
 
       // Validate transformed data
       const billingValidation = {
@@ -403,6 +566,73 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
         </div>
       </div>
 
+      {/* Data Quality Warning Banner */}
+      {(() => {
+        const hasRealDoctorNames = complianceResult.analysisView.some((row: any) => 
+          row.Doctor_Name && !row.Doctor_Name.startsWith('Doctor ')
+        );
+        const hasRealPatientNames = complianceResult.analysisView.some((row: any) => 
+          row.Patient_Name && !row.Patient_Name.startsWith('Patient ')
+        );
+        
+        if (!hasRealDoctorNames || !hasRealPatientNames) {
+          // Get actual column names from the CSV files
+          const billingColumns = opBillingData && opBillingData.length > 0 ? Object.keys(opBillingData[0]) : [];
+          const doctorColumns = doctorRosterData && doctorRosterData.length > 0 ? Object.keys(doctorRosterData[0]) : [];
+          
+          return (
+            <div className="max-w-7xl mx-auto px-6 py-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                  <div className="text-yellow-800">
+                    <strong>Data Quality Notice:</strong> Some data appears to be using fallback values. 
+                    <div className="mt-2">
+                      <div className="text-sm">
+                        <strong>Available columns in your CSV files:</strong>
+                        {billingColumns.length > 0 && (
+                          <div className="mt-1">
+                            <span className="font-medium">Billing CSV:</span> {billingColumns.join(', ')}
+                          </div>
+                        )}
+                        {doctorColumns.length > 0 && (
+                          <div className="mt-1">
+                            <span className="font-medium">Doctor CSV:</span> {doctorColumns.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-sm">
+                        <strong>Expected column names for better parsing:</strong>
+                        {!hasRealDoctorNames && <div className="mt-1">• Doctor names: "Doctor_Name", "doctor_name", "DoctorName", "name", "Doctor", etc.</div>}
+                        {!hasRealPatientNames && <div className="mt-1">• Patient names: "Patient_Name", "patient_name", "PatientName", "name", "Patient", etc.</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        // Show success message when real data is being used
+        if (hasRealDoctorNames && hasRealPatientNames) {
+          return (
+            <div className="max-w-7xl mx-auto px-6 py-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div className="text-green-800">
+                    <strong>Data Quality: Excellent!</strong> All data is being parsed from your CSV files successfully.
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        return null;
+      })()}
+
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* AI Q&A */}
         <AIQueryBar data={complianceResult.analysisView} context={'billing'} />
@@ -417,49 +647,6 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
             </div>
           </div>
         )}
-
-        {/* Data Processing Status */}
-        <div className="mb-8">
-          <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-2 border-green-200 dark:border-green-800">
-            <CardHeader>
-              <CardTitle className="flex items-center text-green-800 dark:text-green-300">
-                <CheckCircle className="w-6 h-6 mr-2" />
-                Data Processing Status
-              </CardTitle>
-              <CardDescription>
-                Real-time data processing and analysis status
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">
-                    {opBillingData?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Billing Records</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {doctorRosterData?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Doctor Records</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600 mb-2">
-                    {complianceResult.analysisView.length}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Processed Records</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-600 mb-2">
-                    {complianceResult.violations.length}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Compliance Issues</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Business Performance Overview */}
         <div className="mb-8">
@@ -495,7 +682,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-600 mb-2">
-                    {Math.round((complianceResult.violations.length / complianceResult.analysisView.length) * 100)}%
+                    {Math.max(0, 100 - Math.round((complianceResult.violations.length / complianceResult.analysisView.length) * 100))}%
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">Data Quality Score</div>
                 </div>
@@ -504,125 +691,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
           </Card>
         </div>
 
-        {/* Operational Insights */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <TrendingUp className="w-6 h-6 mr-2 text-green-500" />
-            Operational Insights
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Revenue Performance */}
-            <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-green-800 dark:text-green-300 flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Revenue Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600 mb-2">
-                  ${(complianceResult.summaries.averageAmount * complianceResult.analysisView.length).toLocaleString()}
-                </div>
-                <p className="text-sm text-green-700 dark:text-green-400">
-                  Total revenue generated from all visits
-                </p>
-              </CardContent>
-            </Card>
 
-            {/* Doctor Efficiency */}
-            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-blue-800 dark:text-blue-300 flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Doctor Efficiency
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {Math.round(complianceResult.analysisView.length / doctorRosterData.length)}
-                </div>
-                <p className="text-sm text-blue-700 dark:text-blue-400">
-                  Average visits per doctor
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Data Quality Score */}
-            <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-purple-800 dark:text-purple-300 flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Data Quality Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-purple-600 mb-2">
-                  {Math.max(0, 100 - Math.round((complianceResult.violations.length / complianceResult.analysisView.length) * 100))}%
-                </div>
-                <p className="text-sm text-purple-700 dark:text-purple-400">
-                  Overall data accuracy and completeness
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Technical Summary */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <FileText className="w-6 h-6 mr-2 text-green-500" />
-            Technical Summary
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-gray-600 dark:text-gray-300">Total Records</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{complianceResult.analysisView.length}</div>
-                <p className="text-xs text-gray-500">Billing records processed</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-gray-600 dark:text-gray-300">Violation Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {((complianceResult.violations.length / complianceResult.analysisView.length) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-gray-500">Records with violations</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-gray-600 dark:text-gray-300">Average Amount</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  ${complianceResult.summaries.averageAmount?.toFixed(2) || 'N/A'}
-                </div>
-                <p className="text-xs text-gray-500">Per transaction</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-gray-600 dark:text-gray-300">Payer Types</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {Object.keys(complianceResult.summaries.payerDistribution || {}).length}
-                </div>
-                <p className="text-xs text-gray-500">Payment methods</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
         {/* Real-time Compliance Alerts */}
         <div className="mb-8">
@@ -730,118 +799,6 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
           </div>
         </div>
 
-        {/* Data Summary */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <BarChart3 className="w-6 h-6 mr-2 text-blue-500" />
-            Data Summary
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Total Records */}
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Records</p>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                      {complianceResult?.analysisView?.length || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Revenue */}
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Total Revenue</p>
-                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                      ${((complianceResult?.summaries?.averageAmount || 0) * (complianceResult?.analysisView?.length || 0)).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Compliance Rate */}
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Compliance Rate</p>
-                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                      {Math.max(0, 100 - Math.round(((complianceResult?.violations?.length || 0) / (complianceResult?.analysisView?.length || 1)) * 100))}%
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Doctors */}
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Active Doctors</p>
-                    <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                      {doctorRosterData?.length || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Data Quality Metrics */}
-          <div className="mt-6">
-            <Card className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900/20 dark:to-gray-900/20 border-slate-200 dark:border-slate-800">
-              <CardHeader>
-                <CardTitle className="flex items-center text-slate-800 dark:text-slate-200">
-                  <Activity className="w-5 h-5 mr-2" />
-                  Data Quality Metrics
-                </CardTitle>
-                <CardDescription>Key metrics from your parsed CSV data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      {complianceResult?.analysisView?.length || 0}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">Records Processed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      {Object.keys(complianceResult?.summaries?.payerDistribution || {}).length}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">Payer Types</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      ${(complianceResult?.summaries?.averageAmount || 0).toFixed(2)}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">Average Amount</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
         {/* Advanced Compliance Analytics */}
         <div className="mb-8">
@@ -1439,12 +1396,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                               }
                             }
                             
-                            return [
-                              { doctor: 'Dr. Smith', revenue: 15000, violations: 2, patients: 25 },
-                              { doctor: 'Dr. Johnson', revenue: 22000, violations: 1, patients: 30 },
-                              { doctor: 'Dr. Brown', revenue: 18000, violations: 3, patients: 28 },
-                              { doctor: 'Dr. Davis', revenue: 12000, violations: 0, patients: 20 }
-                            ];
+                            return [];
                           }
                           
                           return result;
@@ -1528,11 +1480,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                           }
                         }
                         
-                        return [
-                          { procedure: 'OP100', compliance: 95, total: 20, violations: 1 },
-                          { procedure: 'OP200', compliance: 88, total: 15, violations: 2 },
-                          { procedure: 'OP300', compliance: 92, total: 12, violations: 1 }
-                        ];
+                        return [];
                       }
                       
                       return result;
