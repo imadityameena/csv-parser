@@ -11,7 +11,7 @@ interface AIQueryBarProps {
   onAnswer?: (text: string) => void;
 }
 
-// Very simple NL intent parser for common analytics questions
+// Simple NL parser
 function localAnswer(query: string, data: any[], context: 'billing' | 'roster'): string {
   const q = query.toLowerCase();
   if (context === 'billing') {

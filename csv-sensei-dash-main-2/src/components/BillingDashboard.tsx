@@ -19,7 +19,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
   const [insights, setInsights] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any | null>(null);
 
-  // Flexible field accessor to tolerate different CSV header names
+  // Field accessor
   const getFieldValue = (row: any, possibleNames: string[], fallback: any = undefined) => {
     for (const name of possibleNames) {
       if (row[name] !== undefined && row[name] !== null && row[name] !== '') {

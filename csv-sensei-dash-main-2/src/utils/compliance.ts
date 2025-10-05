@@ -51,7 +51,7 @@ function pushIf(cond: boolean, v: Violation, out: Violation[]) {
 export function runCompliance(opBilling: any[], doctorRoster: any[]): ComplianceResult {
   const violations: Violation[] = [];
 
-  // Header checks (R1 pre-checks for required columns)
+  // Header checks
   const billingHeaders = Object.keys(opBilling[0] || {});
   const missingBilling = requiredBillingColumns.filter(c => !billingHeaders.includes(c));
   missingBilling.forEach(c => violations.push({ dataset: 'op_billing', row: 0, rule: 'R1', severity: 'HIGH', reason: `Missing required column: ${c}` }));
@@ -60,16 +60,16 @@ export function runCompliance(opBilling: any[], doctorRoster: any[]): Compliance
   const missingDoctor = requiredDoctorColumns.filter(c => !doctorHeaders.includes(c));
   missingDoctor.forEach(c => violations.push({ dataset: 'doctor_roster', row: 0, rule: 'R4', severity: 'HIGH', reason: `Missing required column: ${c}` }));
 
-  // Build doctor map
+  // Doctor map
   const doctorById = new Map<string, any>();
   doctorRoster.forEach(dr => {
     if (dr && dr.Doctor_ID) doctorById.set(String(dr.Doctor_ID), dr);
   });
 
-  // Track Patient_ID uniqueness per Visit_ID (R1)
+  // Track Patient_ID per Visit_ID
   const visitToPatient = new Map<string, string>();
 
-  // Compute analysis view and payer distribution
+  // Compute analysis view
   const analysisView: any[] = [];
   const payerDistribution: Record<string, number> = {};
   let amountSum = 0;

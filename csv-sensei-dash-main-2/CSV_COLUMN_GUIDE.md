@@ -71,4 +71,3 @@ If you see "Doctor 1", "Doctor 2", etc. in the dashboard:
 4. Re-upload your CSV files
 
 The system will automatically detect and use the best matching column names, but using the exact expected names will give you the best results.
-

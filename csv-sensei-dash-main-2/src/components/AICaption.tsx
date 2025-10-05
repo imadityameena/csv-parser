@@ -40,14 +40,14 @@ export const AICaption: React.FC<AICaptionProps> = ({
     setError(null);
 
     try {
-      // For CMS Medicare, generate insights locally instead of calling Supabase
+      // CMS Medicare - local
       if (industry === 'cms_medicare') {
         const localInsights = generateLocalCMSMedicareInsights(data, chartType);
         setInsights(localInsights);
         return;
       }
 
-      // For other industries, call backend AI endpoint
+      // Other industries - backend
       const sampleData = data.slice(0, 20);
       const result = await generateBusinessInsights({ data: sampleData, industry, chartType });
       const limitedInsights = (result.insights || []).slice(0, 3);
@@ -61,7 +61,7 @@ export const AICaption: React.FC<AICaptionProps> = ({
     }
   };
 
-  // Local CMS Medicare insights generation
+  // Local CMS insights
   const generateLocalCMSMedicareInsights = (data: any[], chartType: 'bar' | 'line' | 'pie'): BusinessInsight[] => {
     const insights: BusinessInsight[] = [];
     

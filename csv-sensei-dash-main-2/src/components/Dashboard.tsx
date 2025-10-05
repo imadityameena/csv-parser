@@ -17,7 +17,7 @@ interface DashboardProps {
   aiMappings?: any;
   onBack: () => void;
   aiCaptionEnabled?: boolean;
-  // Compliance mode props
+  // Compliance props
   complianceMode?: boolean;
   opBillingData?: any[];
   doctorRosterData?: any[];
