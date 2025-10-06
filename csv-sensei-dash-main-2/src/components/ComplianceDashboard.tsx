@@ -79,6 +79,8 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       }
       console.log('Billing Data Fields:', opBillingData?.[0] ? Object.keys(opBillingData[0]) : 'No data');
       console.log('Doctor Data Fields:', doctorRosterData?.[0] ? Object.keys(doctorRosterData[0]) : 'No data');
+      console.log('Billing Data Sample:', opBillingData?.[0]);
+      console.log('Doctor Data Sample:', doctorRosterData?.[0]);
       
       // Validate data before running compliance analysis
       if (!opBillingData || opBillingData.length === 0) {

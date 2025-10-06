@@ -2,14 +2,19 @@ export const DOCTOR_ROSTER_SCHEMA = {
   required: [
     'Doctor_ID',
     'Doctor_Name',
+    'Specialty',
+    'License_No',
+    'License_Expiry',
+    'Shift_Start',
+    'Shift_End'
+  ],
+  optional: [
     'Specialization',
     'Department',
     'Date',
     'Shift',
     'Start_Time',
-    'End_Time'
-  ],
-  optional: [
+    'End_Time',
     'Location',
     'Room_No',
     'On_Call',
@@ -21,6 +26,11 @@ export const DOCTOR_ROSTER_SCHEMA = {
   types: {
     Doctor_ID: 'string',
     Doctor_Name: 'string',
+    Specialty: 'string',
+    License_No: 'string',
+    License_Expiry: 'date',
+    Shift_Start: 'string',
+    Shift_End: 'string',
     Specialization: 'string',
     Department: 'string',
     Date: 'date',

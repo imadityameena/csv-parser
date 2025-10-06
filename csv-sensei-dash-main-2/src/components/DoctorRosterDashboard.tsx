@@ -38,8 +38,8 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
 
     const totalDoctors = new Set(data.map(row => getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id'])).filter(Boolean)).size;
     const totalShifts = data.length;
-    const departments = [...new Set(data.map(row => getFieldValue(row, ['Department', 'department', 'Dept', 'dept', 'Specialty', 'specialty'])).filter(Boolean))];
-    const specializations = [...new Set(data.map(row => getFieldValue(row, ['Specialization', 'specialization', 'Specialty', 'specialty', 'Speciality', 'speciality'])).filter(Boolean))];
+    const departments = [...new Set(data.map(row => getFieldValue(row, ['Specialty', 'specialty', 'Department', 'department', 'Dept', 'dept', 'Specialization', 'specialization'])).filter(Boolean))];
+    const specializations = [...new Set(data.map(row => getFieldValue(row, ['Specialty', 'specialty', 'Specialization', 'specialization', 'Speciality', 'speciality'])).filter(Boolean))];
     
     // Shift distribution (using Shift_Start time as shift identifier)
     const shiftDistribution = data.reduce((acc, row) => {
@@ -52,14 +52,14 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
 
     // Department distribution (using Specialty as department)
     const departmentDistribution = data.reduce((acc, row) => {
-      const dept = getFieldValue(row, ['Department', 'department', 'Dept', 'dept', 'Specialty', 'specialty']) || 'Unknown';
+      const dept = getFieldValue(row, ['Specialty', 'specialty', 'Department', 'department', 'Dept', 'dept']) || 'Unknown';
       acc[dept] = (acc[dept] || 0) + 1;
       return acc;
     }, {});
 
     // Specialization distribution
     const specializationDistribution = data.reduce((acc, row) => {
-      const spec = getFieldValue(row, ['Specialization', 'specialization', 'Specialty', 'specialty', 'Speciality', 'speciality']) || 'Unknown';
+      const spec = getFieldValue(row, ['Specialty', 'specialty', 'Specialization', 'specialization', 'Speciality', 'speciality']) || 'Unknown';
       acc[spec] = (acc[spec] || 0) + 1;
       return acc;
     }, {});
@@ -76,7 +76,8 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
       const startTime = getFieldValue(row, ['Shift_Start', 'shift_start', 'Start_Time', 'start_time', 'StartTime', 'startTime', 'Time_Start', 'time_start']);
       const endTime = getFieldValue(row, ['Shift_End', 'shift_end', 'End_Time', 'end_time', 'EndTime', 'endTime', 'Time_End', 'time_end']);
       const doctor = getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name', 'name']);
-      return { startTime, endTime, doctor };
+      const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
+      return { startTime, endTime, doctor, doctorId };
     }).filter(slot => slot.startTime && slot.endTime);
 
     setInsights({
@@ -455,18 +456,22 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
                     const doctorStats = data.reduce((acc, row) => {
                       const doctorName = getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name', 'name']);
                       const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
+                      const specialty = getFieldValue(row, ['Specialty', 'specialty', 'Specialization', 'specialization', 'Speciality', 'speciality']);
                       const key = `${doctorName} (${doctorId})`;
                       if (key && key !== 'N/A (N/A)') {
-                        acc[key] = (acc[key] || 0) + 1;
+                        if (!acc[key]) {
+                          acc[key] = { count: 0, specialty: specialty || 'Unknown' };
+                        }
+                        acc[key].count += 1;
                       }
                       return acc;
                     }, {});
 
                     const topDoctors = Object.entries(doctorStats)
-                      .sort(([,a], [,b]) => (b as number) - (a as number))
+                      .sort(([,a], [,b]) => (b as any).count - (a as any).count)
                       .slice(0, 5);
 
-                    return topDoctors.map(([doctor, count], index) => (
+                    return topDoctors.map(([doctor, stats], index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
@@ -474,11 +479,11 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
                           </div>
                           <div>
                             <div className="font-medium text-sm text-gray-900 dark:text-white">{doctor.split(' (')[0]}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{doctor.split(' (')[1]?.replace(')', '')}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{doctor.split(' (')[1]?.replace(')', '')} • {(stats as any).specialty}</div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-green-600">{count}</div>
+                          <div className="font-bold text-green-600">{(stats as any).count}</div>
                           <div className="text-xs text-gray-500">shifts</div>
                         </div>
                       </div>
@@ -511,6 +516,7 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
                     const expiringLicenses = data
                       .map(row => {
                         const doctorName = getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name', 'name']);
+                        const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
                         const licenseExpiry = getFieldValue(row, ['License_Expiry', 'license_expiry', 'LicenseExpiry', 'licenseExpiry', 'Expiry_Date', 'expiry_date']);
                         
                         if (licenseExpiry && licenseExpiry !== 'N/A') {
@@ -520,6 +526,7 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
                           if (expiryDate <= threeMonthsFromNow) {
                             return {
                               doctor: doctorName,
+                              doctorId: doctorId,
                               expiryDate: licenseExpiry,
                               daysUntilExpiry,
                               isExpired: expiryDate < now,
@@ -554,7 +561,7 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium text-gray-900 dark:text-white">{license!.doctor}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">Expires: {license!.expiryDate}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{license!.doctorId} • Expires: {license!.expiryDate}</div>
                           </div>
                           <div className={`text-right font-bold ${
                             license!.isExpired ? 'text-red-600' : license!.isUrgent ? 'text-yellow-600' : 'text-orange-600'
@@ -640,11 +647,12 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Specialty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Shift Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License No</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License Expiry</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Shift Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
@@ -671,25 +679,25 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
 
                     return (
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{doctorName}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-300">{doctorId}</div>
-                          </div>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {doctorId}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {doctorName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                           {specialty}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                           {licenseNo}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {licenseExpiry}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                           {startTime !== 'N/A' && endTime !== 'N/A' ? `${startTime} - ${endTime}` : 
                            startTime !== 'N/A' ? startTime : 
                            endTime !== 'N/A' ? endTime : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                          {licenseExpiry}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Badge variant={onCall === 'Y' || onCall === 'Yes' || onCall === '1' || onCall === 'true' ? 'default' : 'secondary'}>

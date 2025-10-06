@@ -45,9 +45,19 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
 
   const generateInsights = () => {
     const totalBills = data.length;
-    const totalAmount = data.reduce((sum, row) => sum + parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])), 0);
+    const totalAmount = data.reduce((sum, row) => sum + parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])), 0);
     const averageAmount = totalAmount / totalBills;
     
+    // Create doctor ID to specialty mapping first (needed for department analysis)
+    const doctorIdToSpecialty: Record<string, string> = (doctorRosterData || []).reduce((acc, row) => {
+      const id = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
+      const spec = getFieldValue(row, ['Specialty', 'specialty', 'Specialization', 'specialization', 'Speciality', 'speciality']);
+      if (id && spec) {
+        acc[String(id)] = String(spec);
+      }
+      return acc;
+    }, {} as Record<string, string>);
+
     // Payment status analysis
     const paymentStatus = data.reduce((acc, row) => {
       const status = getFieldValue(row, ['Payment_Status', 'PaymentStatus', 'Status', 'Payment_Status_Desc'], 'Unknown') || 'Unknown';
@@ -57,12 +67,29 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
 
     // Department analysis
     // Derive department from provided field or from procedure code mapping
-    const procToDept: Record<string, string> = { OP100: 'General', OP200: 'Orthopedics', OP300: 'Cardiology' };
+    const procToDept: Record<string, string> = { 
+      'OP100': 'General Medicine', 
+      'OP200': 'Orthopedics', 
+      'OP300': 'Cardiology',
+      'OP400': 'Dermatology',
+      'OP500': 'Neurology'
+    };
     const departmentRevenue = data.reduce((acc, row) => {
       const procedure = getFieldValue(row, ['Procedure_Code', 'Service_Code', 'Procedure', 'Proc_Code']);
-      const inferred = procedure && procToDept[String(procedure)] ? procToDept[String(procedure)] : undefined;
-      const dept = (getFieldValue(row, ['Department', 'Dept']) || inferred || 'Unknown') as string;
-      const amount = parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
+      const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
+      
+      // Try to get department from doctor roster first
+      let dept = 'Unknown';
+      if (doctorId && doctorIdToSpecialty[String(doctorId)]) {
+        dept = doctorIdToSpecialty[String(doctorId)];
+      } else if (procedure && procToDept[String(procedure)]) {
+        dept = procToDept[String(procedure)];
+      } else {
+        const deptField = getFieldValue(row, ['Department', 'Dept', 'Specialty', 'specialty']);
+        dept = deptField ? String(deptField) : `Procedure ${procedure || 'Unknown'}`;
+      }
+      
+      const amount = parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
       if (!acc[dept]) acc[dept] = { count: 0, revenue: 0 };
       acc[dept].count += 1;
       acc[dept].revenue += amount;
@@ -79,7 +106,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
     // Service analysis
     const serviceRevenue = data.reduce((acc, row) => {
       const service = getFieldValue(row, ['Procedure_Code', 'Service_Code', 'Procedure', 'Proc_Code'], 'Unknown') || 'Unknown';
-      const amount = parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
+      const amount = parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
       if (!acc[service]) acc[service] = { count: 0, revenue: 0 };
       acc[service].count += 1;
       acc[service].revenue += amount;
@@ -92,7 +119,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
         const status = getFieldValue(row, ['Payment_Status', 'PaymentStatus', 'Status', 'Payment_Status_Desc'], '').toString();
         return status === 'Pending' || status === 'Outstanding' || status === 'Unpaid';
       })
-      .reduce((sum, row) => sum + parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])), 0);
+      .reduce((sum, row) => sum + parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])), 0);
 
     // Date analysis
     const dateRange = data
@@ -102,55 +129,40 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
     const minDate = dateRange.length > 0 ? new Date(Math.min(...dateRange.map(d => d.getTime()))) : null;
     const maxDate = dateRange.length > 0 ? new Date(Math.max(...dateRange.map(d => d.getTime()))) : null;
 
-    // Specialty performance (via doctor roster mapping)
-    const doctorIdToSpecialty: Record<string, string> = (doctorRosterData || []).reduce((acc, row) => {
-      const id = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
-      const spec = getFieldValue(row, ['Specialty', 'specialty', 'Specialization', 'specialization', 'Speciality', 'speciality']);
-      if (id && spec) acc[String(id)] = String(spec);
-      return acc;
-    }, {} as Record<string, string>);
+    // Specialty performance (via doctor roster mapping) - already created above
 
-    // License expiry tracking from doctor roster
-    const doctorLicenseMap: Record<string, { name: string; expiry: Date | null }> = {};
-    (doctorRosterData || []).forEach(row => {
-      const id = row.Doctor_ID || row.doctor_id || row.ID || row.id;
-      const name = row.Doctor_Name || row.doctor_name || row.Name || row.name || String(id || 'Unknown');
-      const expRaw = row.License_Expiry || row.license_expiry || row.LicenseExpiry || row.licenseExpiry || row.Expiry_Date || row.expiry_date;
-      const exp = expRaw ? new Date(String(expRaw)) : null;
-      if (!id) return;
-      if (!doctorLicenseMap[id]) doctorLicenseMap[id] = { name, expiry: exp };
-      // If multiple entries, keep the nearest upcoming expiry
-      if (doctorLicenseMap[id].expiry && exp) {
-        if (exp < doctorLicenseMap[id].expiry!) doctorLicenseMap[id].expiry = exp;
-      } else if (exp && !doctorLicenseMap[id].expiry) {
-        doctorLicenseMap[id].expiry = exp;
-      }
-    });
-    const today = new Date();
-    const licenseExpiries = Object.entries(doctorLicenseMap).map(([id, v]) => {
-      const days = v.expiry ? Math.ceil((v.expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
-      let status: 'red' | 'yellow' | 'green' | 'gray' = 'gray';
-      if (days === null) status = 'gray';
-      else if (days < 30) status = 'red';
-      else if (days < 60) status = 'yellow';
-      else if (days < 90) status = 'green';
-      return { id, name: v.name, expiry: v.expiry, days, status };
-    }).sort((a, b) => {
-      const ad = a.expiry ? a.expiry.getTime() : Infinity;
-      const bd = b.expiry ? b.expiry.getTime() : Infinity;
-      return ad - bd;
-    });
 
     const specialtyAgg = data.reduce((acc, row) => {
       const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
-      const deptFallback = getFieldValue(row, ['Department', 'Dept']);
-      const specialty = doctorId
-        ? (doctorIdToSpecialty[String(doctorId)] || String(deptFallback || 'Unknown'))
-        : String(deptFallback || 'Unknown');
-      const amount = parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
+      const deptFallback = getFieldValue(row, ['Department', 'Dept', 'Specialty', 'specialty']);
+      
+      // Try to get specialty from doctor roster first, then fall back to procedure code mapping
+      let specialty = 'Unknown';
+      
+      if (doctorId && doctorIdToSpecialty[String(doctorId)]) {
+        specialty = doctorIdToSpecialty[String(doctorId)];
+      } else if (deptFallback) {
+        specialty = String(deptFallback);
+      } else {
+        // Map procedure codes to specialties as fallback
+        const procedureCode = getFieldValue(row, ['Procedure_Code', 'Service_Code', 'Procedure', 'Proc_Code']);
+        const procToSpecialty: Record<string, string> = { 
+          'OP100': 'General Medicine', 
+          'OP200': 'Orthopedics', 
+          'OP300': 'Cardiology',
+          'OP400': 'Dermatology',
+          'OP500': 'Neurology'
+        };
+        specialty = procedureCode && procToSpecialty[String(procedureCode)] 
+          ? procToSpecialty[String(procedureCode)] 
+          : `Procedure ${procedureCode || 'Unknown'}`;
+      }
+      
+      const amount = parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
       if (!acc[specialty]) acc[specialty] = { revenue: 0, visits: 0 };
       acc[specialty].revenue += amount;
       acc[specialty].visits += 1;
+      
       return acc;
     }, {} as Record<string, { revenue: number; visits: number }>);
 
@@ -159,7 +171,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
       const doctorId = getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id']);
       const doctorName = getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name', 'name'], String(doctorId || 'Unknown'));
       const patientId = getFieldValue(row, ['Patient_ID', 'patient_id', 'PatientId']);
-      const amount = parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
+      const amount = parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
       const key = String(doctorId || doctorName || 'Unknown');
       if (!acc[key]) acc[key] = { doctorId: key, doctorName, patients: new Set<string>(), revenue: 0 };
       if (patientId) acc[key].patients.add(String(patientId));
@@ -180,7 +192,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
     const matrixAgg = data.reduce((acc, row) => {
       const payer = getFieldValue(row, ['Payer_Type', 'Payer', 'PayerType'], 'Unknown') || 'Unknown';
       const proc = getFieldValue(row, ['Procedure_Code', 'Service_Code', 'Procedure', 'Proc_Code'], 'Unknown') || 'Unknown';
-      const amount = parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
+      const amount = parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']));
       if (!acc[proc]) acc[proc] = {} as Record<string, number>;
       acc[proc][payer] = (acc[proc][payer] || 0) + amount;
       return acc;
@@ -242,8 +254,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
       matrixAgg,
       ageServiceAgg,
       consentRate,
-      consentAnomalies,
-      licenseExpiries
+      consentAnomalies
     });
   };
 
@@ -310,52 +321,6 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
           </div>
         </div>
 
-        {/* License Expiry Tracking */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>License Expiry Tracking</CardTitle>
-            <CardDescription>Doctors with upcoming license expiries</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              const rows = (insights?.licenseExpiries || []) as Array<{ id: string; name: string; expiry: Date | null; days: number | null; status: string }>;
-              if (!rows.length) return <div className="text-sm text-gray-600">No license data available</div>;
-              return (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr>
-                        <th className="p-2 text-left">Doctor</th>
-                        <th className="p-2 text-left">License Expiry</th>
-                        <th className="p-2 text-left">Days Left</th>
-                        <th className="p-2 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.slice(0, 10).map((r) => (
-                        <tr key={r.id} className="border-b border-gray-200 dark:border-gray-700">
-                          <td className="p-2">{r.name}</td>
-                          <td className="p-2">{r.expiry ? new Date(r.expiry).toLocaleDateString() : 'N/A'}</td>
-                          <td className="p-2">{r.days !== null ? r.days : 'N/A'}</td>
-                          <td className="p-2">
-                            <span className={
-                              r.status === 'red' ? 'text-red-600 font-medium' :
-                              r.status === 'yellow' ? 'text-yellow-600 font-medium' :
-                              r.status === 'green' ? 'text-green-600 font-medium' :
-                              'text-gray-500'
-                            }>
-                              {r.status === 'red' ? '<30 days' : r.status === 'yellow' ? '<60 days' : r.status === 'green' ? '<90 days' : 'Unknown'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -560,7 +525,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
                 // Build monthly series using flexible fields
                 const raw = data.map(row => ({
                   date: getFieldValue(row, ['Bill_Date', 'Visit_Date', 'Date', 'Transaction_Date']),
-                  value: parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']))
+                  value: parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount']))
                 })).filter(p => p.date);
                 const byMonth: Record<string, number> = {};
                 raw.forEach(p => {
@@ -877,19 +842,22 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bill ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Visit ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Patient</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Visit Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Procedure</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payer Type</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Consent</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
                   {data.slice(0, 10).map((row, index) => (
                     <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {getFieldValue(row, ['Bill_ID', 'BillId', 'BillID', 'Visit_ID', 'ID', 'id'], '—')}
+                        {getFieldValue(row, ['Visit_ID', 'Bill_ID', 'BillId', 'BillID', 'ID', 'id'], '—')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -897,34 +865,33 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
                           <div className="text-sm text-gray-500 dark:text-gray-300">{getFieldValue(row, ['Patient_ID', 'patient_id', 'PatientId'], '')}</div>
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {getFieldValue(row, ['Age', 'age', 'Patient_Age', 'patient_age'], 'N/A')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {getFieldValue(row, ['Visit_Date', 'visit_date', 'Date', 'date', 'Bill_Date', 'bill_date'], 'N/A')}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">{getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name', 'Doctor_ID', 'doctor_id'], 'Unknown')}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-300">{getFieldValue(row, ['Department', 'Dept'], '')}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{getFieldValue(row, ['Doctor_ID', 'doctor_id', 'DoctorId', 'ID', 'id'], 'Unknown')}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-300">{getFieldValue(row, ['Doctor_Name', 'doctor_name', 'DoctorName', 'Name'], '')}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         {getFieldValue(row, ['Procedure_Code', 'Service_Code', 'Procedure', 'Proc_Code'], '')}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant="outline">
+                          {getFieldValue(row, ['Payer_Type', 'Payer', 'PayerType'], 'Unknown')}
+                        </Badge>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        ${parseAmount(getFieldValue(row, ['Total_Amount', 'Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${parseAmount(getFieldValue(row, ['Amount', 'Total_Amount', 'TotalAmount', 'Amount_Billed', 'Bill_Amount', 'Gross_Amount'])).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {(() => {
-                          const raw = getFieldValue(row, ['Payment_Status', 'PaymentStatus', 'Status', 'Payment_Status_Desc']);
-                          let statusValue = raw;
-                          const isMissing = (v: any) => v === undefined || v === null || String(v).trim() === '' || String(v).toLowerCase() === 'undefined';
-                          if (isMissing(statusValue)) {
-                            statusValue = getFieldValue(row, ['Payer_Type', 'Payer', 'PayerType'], 'Unknown');
-                          }
-                          const status = String(statusValue);
-                          const variant = (status === 'Paid') ? 'default' : (status === 'Pending' || status === 'Outstanding' || status === 'Unpaid') ? 'secondary' : 'secondary';
-                          return (
-                            <Badge variant={variant as any}>
-                              {status}
-                            </Badge>
-                          );
-                        })()}
+                        <Badge variant={getFieldValue(row, ['Consent_Flag', 'consent_flag', 'Consent', 'consent']) === 'Y' ? 'default' : 'secondary'}>
+                          {getFieldValue(row, ['Consent_Flag', 'consent_flag', 'Consent', 'consent'], 'N')}
+                        </Badge>
                       </td>
                     </tr>
                   ))}

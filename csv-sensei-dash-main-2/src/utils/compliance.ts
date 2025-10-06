@@ -84,7 +84,7 @@ export function runCompliance(opBilling: any[], doctorRoster: any[]): Compliance
     const visitDate = toDate(row?.Visit_Date);
     const doctorId = row?.Doctor_ID?.toString()?.trim();
     const proc = row?.Procedure_Code?.toString()?.trim();
-    const amount = Number(row?.Total_Amount);
+    const amount = Number(row?.Amount || row?.Total_Amount);
     const consent = row?.Consent_Flag?.toString()?.trim()?.toUpperCase();
     const payerType = row?.Payer_Type?.toString()?.trim()?.toUpperCase();
 
