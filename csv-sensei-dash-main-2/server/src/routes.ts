@@ -250,7 +250,7 @@ router.delete('/records/:id', async (req, res) => {
 // AI Chat endpoints
 router.post('/ai/chat', async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, data, context } = req.body;
     
     if (!question || typeof question !== 'string') {
       return res.status(400).json({ 
@@ -258,13 +258,25 @@ router.post('/ai/chat', async (req, res) => {
       });
     }
 
-    const answer = await aiService.answerQuestion(question);
-    
-    res.json({ 
-      answer,
-      question,
-      timestamp: new Date().toISOString()
-    });
+    // If data is provided, analyze the actual CSV data
+    if (data && Array.isArray(data) && data.length > 0) {
+      const answer = await analyzeCSVData(question, data, context);
+      res.json({ 
+        answer,
+        question,
+        timestamp: new Date().toISOString(),
+        dataAnalyzed: true
+      });
+    } else {
+      // Fallback to dashboard knowledge base
+      const answer = await aiService.answerQuestion(question);
+      res.json({ 
+        answer,
+        question,
+        timestamp: new Date().toISOString(),
+        dataAnalyzed: false
+      });
+    }
   } catch (error) {
     console.error('Error in AI chat:', error);
     res.status(500).json({ 
@@ -273,6 +285,74 @@ router.post('/ai/chat', async (req, res) => {
     });
   }
 });
+
+// Function to analyze CSV data with AI
+async function analyzeCSVData(question: string, data: any[], context: string): Promise<string> {
+  try {
+    const openAIApiKey = process.env.OPENAI_API_KEY;
+    
+    if (!openAIApiKey) {
+      return "AI analysis is not available. Please configure OpenAI API key for advanced data analysis.";
+    }
+
+    // Prepare data summary for AI analysis
+    const dataSummary = {
+      totalRecords: data.length,
+      fields: Object.keys(data[0] || {}),
+      sampleData: data.slice(0, 5), // First 5 rows
+      context: context || 'general'
+    };
+
+    const prompt = `
+You are a data analyst AI assistant. A user has uploaded CSV data and is asking questions about it.
+
+Question: "${question}"
+
+Data Summary:
+- Total Records: ${dataSummary.totalRecords}
+- Fields: ${dataSummary.fields.join(', ')}
+- Context: ${dataSummary.context}
+- Sample Data (first 5 rows):
+${JSON.stringify(dataSummary.sampleData, null, 2)}
+
+Instructions:
+1. Analyze the question in relation to the actual CSV data provided
+2. Provide a helpful, accurate answer based on the data structure and content
+3. If the question can't be answered with the available data, explain what data would be needed
+4. Be specific and use actual numbers/values from the data when possible
+5. Keep your response concise but informative
+
+Answer:`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a helpful data analyst. Always provide accurate, data-driven answers.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const aiResponse = await response.json();
+    return aiResponse.choices[0].message.content.trim();
+    
+  } catch (error) {
+    console.error('Error analyzing CSV data:', error);
+    return "I encountered an error while analyzing your data. Please try rephrasing your question or check if your data is properly formatted.";
+  }
+}
 
 // Initialize AI service
 router.post('/ai/initialize', async (req, res) => {
