@@ -1,17 +1,17 @@
+# CSV Sensei Dashboard
 
-# Business Intelligence Dashboard
+A next-generation AI-powered business intelligence dashboard that transforms your CSV data into beautiful visualizations with intelligent insights.
 
-A next-generation AI-powered business intelligence dashboard that transforms your CSV data into beautiful visualizations with intelligent insights. 
+## 🚀 Features
 
-## 🚀 Features 
-
-- **Multi-Industry Support**: Optimized schemas for Sales, Retail, Finance, Healthcare, and general business data
+- **Multi-Industry Support**: Optimized schemas for Doctor Roster, OP Billing, Compliance AI, and general business data
 - **Smart CSV Validation**: Advanced validation engine with AI-powered suggestions for data quality improvement
 - **Interactive Visualizations**: Beautiful charts and graphs using Recharts library
 - **AI-Generated Insights**: Automatic caption generation for charts highlighting key trends and anomalies
 - **Data Quality Analysis**: Comprehensive validation with error detection, outlier identification, and data completeness scoring
-- **Responsive Design**: Works seamlessly across desktop and mobile devices 
+- **Responsive Design**: Works seamlessly across desktop and mobile devices
 - **Dark/Light Mode**: Toggle between themes for optimal viewing experience
+- **Authentication**: Secure login system with company-based access
 
 ## 🛠️ Tech Stack
 
@@ -22,46 +22,57 @@ A next-generation AI-powered business intelligence dashboard that transforms you
 - **Charts**: Recharts
 - **File Processing**: PapaParse for CSV handling
 - **Icons**: Lucide React
-- **Deployment**: Lovable Platform
+- **Backend**: MongoDB integration
+- **Authentication**: Context-based auth system
 
 ## 📊 Supported Data Types
 
-### Sales Data
-- Required fields: Invoice ID, Customer Name, Product, Quantity
-- Optional fields: Unit Price, Total, Region, Sale Date
+### Doctor Roster
 
-### Retail Data
-- Required fields: Product, Category, Price, Region
-- Optional fields: Brand, Stock, Supplier, Date
+- Required fields: Doctor ID, Doctor Name, Department, Shift, Date
+- Optional fields: Specialization, Contact, Availability
 
-### Finance Data
-- Required fields: Account, Transaction Type, Amount, Date
-- Optional fields: Description, Reference, Balance
+### OP Billing
 
-### Healthcare Data
-- Required fields: Patient ID, Service, Provider, Amount
-- Optional fields: Date, Insurance, Diagnosis
+- Required fields: Visit ID, Patient ID, Patient Name, Age, Visit Date, Doctor ID, Procedure Code, Payer Type, Amount, Consent Flag
+- Optional fields: Bill ID, Bill Date, Doctor Name, Department, Service Code, Service Description, Quantity, Unit Price, Total Amount, Payment Status, Payment Method
+
+### Compliance AI
+
+- Dual file upload: OP Billing + Doctor Roster files for compliance analysis
+- Cross-validation between billing and roster data
+- Compliance violation detection and reporting
+
+### Others (General Data)
+
+- Flexible schema for any CSV data
+- Automatic field type detection
+- Generic visualization and insights
 
 ## 🚦 Getting Started
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repository-url>
 cd business-intelligence-dashboard
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -128,6 +139,7 @@ The built files will be in the `dist` directory, ready for deployment to any sta
 ## 🧪 Development
 
 ### Project Structure
+
 ```
 src/
 ├── components/          # React components

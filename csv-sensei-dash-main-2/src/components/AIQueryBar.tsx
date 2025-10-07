@@ -5,30 +5,46 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+interface BillingRecord {
+  Total_Amount?: string | number;
+  Payer_Type?: string;
+  Doctor_Name?: string;
+  [key: string]: string | number | undefined;
+}
+
+interface RosterRecord {
+  Doctor_ID?: string | number;
+  Department?: string;
+  On_Call?: string | number;
+  [key: string]: string | number | undefined;
+}
+
+type DataRecord = BillingRecord | RosterRecord;
+
 interface AIQueryBarProps {
-  data: any[];
+  data: DataRecord[];
   context: 'billing' | 'roster';
   onAnswer?: (text: string) => void;
 }
 
 // Simple NL parser
-function localAnswer(query: string, data: any[], context: 'billing' | 'roster'): string {
+function localAnswer(query: string, data: DataRecord[], context: 'billing' | 'roster'): string {
   const q = query.toLowerCase();
   if (context === 'billing') {
     if (q.includes('total revenue')) {
-      const total = data.reduce((s, r) => s + (parseFloat(r.Total_Amount) || 0), 0);
+      const total = data.reduce((s, r) => s + (parseFloat(String((r as BillingRecord).Total_Amount)) || 0), 0);
       return `Total revenue: $${total.toLocaleString()}`;
     }
     if (q.includes('average') && (q.includes('bill') || q.includes('amount'))) {
-      const vals = data.map(r => parseFloat(r.Total_Amount) || 0).filter(v => v > 0);
+      const vals = data.map(r => parseFloat(String((r as BillingRecord).Total_Amount)) || 0).filter(v => v > 0);
       const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
       return `Average bill amount: $${avg.toFixed(2)}`;
     }
     if (q.includes('revenue by') && (q.includes('payer') || q.includes('payer type'))) {
       const map = new Map<string, number>();
       data.forEach(r => {
-        const k = String(r.Payer_Type || 'Unknown');
-        const v = parseFloat(r.Total_Amount) || 0;
+        const k = String((r as BillingRecord).Payer_Type || 'Unknown');
+        const v = parseFloat(String((r as BillingRecord).Total_Amount)) || 0;
         map.set(k, (map.get(k) || 0) + v);
       });
       const parts = Array.from(map.entries()).map(([k, v]) => `${k}: $${v.toLocaleString()}`);
@@ -37,8 +53,8 @@ function localAnswer(query: string, data: any[], context: 'billing' | 'roster'):
     if (q.includes('which doctor') && (q.includes('most revenue') || q.includes('top doctor'))) {
       const map = new Map<string, number>();
       data.forEach(r => {
-        const k = String(r.Doctor_Name || 'Unknown');
-        const v = parseFloat(r.Total_Amount) || 0;
+        const k = String((r as BillingRecord).Doctor_Name || 'Unknown');
+        const v = parseFloat(String((r as BillingRecord).Total_Amount)) || 0;
         map.set(k, (map.get(k) || 0) + v);
       });
       const top = Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0];
@@ -47,20 +63,20 @@ function localAnswer(query: string, data: any[], context: 'billing' | 'roster'):
   }
   if (context === 'roster') {
     if (q.includes('how many') && q.includes('doctors')) {
-      const unique = new Set(data.map(r => r.Doctor_ID)).size;
+      const unique = new Set(data.map(r => (r as RosterRecord).Doctor_ID)).size;
       return `Total unique doctors: ${unique}`;
     }
     if (q.includes('most active department')) {
       const map = new Map<string, number>();
       data.forEach(r => {
-        const k = String(r.Department || 'Unknown');
+        const k = String((r as RosterRecord).Department || 'Unknown');
         map.set(k, (map.get(k) || 0) + 1);
       });
       const top = Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0];
       return top ? `Most active department: ${top[0]} (${top[1]} shifts)` : 'No data available';
     }
     if (q.includes('on call')) {
-      const count = data.filter(r => (r.On_Call === 'Y' || String(r.On_Call).toLowerCase() === 'yes')).length;
+      const count = data.filter(r => ((r as RosterRecord).On_Call === 'Y' || String((r as RosterRecord).On_Call).toLowerCase() === 'yes')).length;
       return `On-call shifts: ${count}`;
     }
   }
@@ -74,11 +90,39 @@ export const AIQueryBar: React.FC<AIQueryBarProps> = ({ data, context, onAnswer 
 
   const handleAsk = async () => {
     if (!query.trim()) return;
+    
     // Try local intent first
     const local = localAnswer(query, data, context);
     setAnswer(local);
     onAnswer?.(local);
-    // Optional: OpenAI streaming (behind env flag) can be added here later
+    
+    // If local answer is not helpful, try AI service
+    if (local.includes('I could not interpret that question locally')) {
+      try {
+        const response = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            question: query
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setAnswer(data.answer);
+          onAnswer?.(data.answer);
+        }
+      } catch (error) {
+        console.error('Error getting AI response:', error);
+        toast({
+          title: "Error",
+          description: "Failed to get AI response. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   return (

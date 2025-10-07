@@ -203,29 +203,9 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
               <TrendingUp className="w-5 h-5 text-green-500 mr-2" />
-              {selectedIndustry === 'cms_medicare' ? 'CMS Medicare Insights' : 
-               selectedIndustry === 'healthcare' ? 'Healthcare Insights' :
-               selectedIndustry === 'finance' ? 'Financial Insights' :
-               selectedIndustry === 'retail' ? 'Retail Insights' :
-               selectedIndustry === 'education' ? 'Education Insights' :
-               selectedIndustry === 'real_estate' ? 'Real Estate Insights' :
-               selectedIndustry === 'transport' ? 'Transportation Insights' :
-               selectedIndustry === 'chemical_industry' ? 'Chemical Industry Insights' :
-               selectedIndustry === 'car_sales' ? 'Automotive Sales Insights' :
-               selectedIndustry === 'car_service' ? 'Automotive Service Insights' :
-               selectedIndustry === 'pharma_retail' ? 'Pharmaceutical Retail Insights' :
-               selectedIndustry === 'education_consultancy' ? 'Education Consultancy Insights' :
-               selectedIndustry === 'distributor_data' ? 'Distributor Data Insights' :
-               selectedIndustry === 'spare_parts' ? 'Spare Parts Insights' :
-               selectedIndustry === 'service_maintenance' ? 'Service Maintenance Insights' :
-               selectedIndustry === 'training_institute' ? 'Training Institute Insights' :
-               selectedIndustry === 'accounting' ? 'Accounting Insights' :
-               selectedIndustry === 'ca_tax_consultant' ? 'Tax Consultant Insights' :
-               selectedIndustry === 'raw_material_procurement' ? 'Procurement Insights' :
-               selectedIndustry === 'supermarket' ? 'Supermarket Insights' :
-               selectedIndustry === 'supplier' ? 'Supplier Insights' :
-               selectedIndustry === 'used_cars' ? 'Used Cars Insights' :
-               selectedIndustry === 'sales_data' ? 'Sales Data Insights' :
+              {selectedIndustry === 'doctor_roster' ? 'Doctor Roster Insights' :
+               selectedIndustry === 'opbilling' ? 'OP Billing Insights' :
+               selectedIndustry === 'compliance' ? 'Compliance AI Insights' :
                'Business Insights'}
             </h3>
                          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">

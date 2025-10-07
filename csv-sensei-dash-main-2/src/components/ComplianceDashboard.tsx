@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, TrendingUp, Shield, FileText, Download, BarChart3, PieChart, Activity, Users, DollarSign, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,17 @@ import { runCompliance, Violation, ComplianceResult } from '@/utils/compliance';
 import { AIQueryBar } from '@/components/AIQueryBar';
 import { topNBySum, groupBy, average, detectAnomalies } from '@/utils/analytics';
 
+interface BillingRecord {
+  [key: string]: string | number | undefined;
+}
+
+interface DoctorRecord {
+  [key: string]: string | number | undefined;
+}
+
 interface ComplianceDashboardProps {
-  opBillingData: any[];
-  doctorRosterData: any[];
+  opBillingData: BillingRecord[];
+  doctorRosterData: DoctorRecord[];
   onBack: () => void;
 }
 
@@ -24,13 +32,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
   const [complianceResult, setComplianceResult] = useState<ComplianceResult | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (opBillingData && doctorRosterData) {
-      runComplianceAnalysis();
-    }
-  }, [opBillingData, doctorRosterData]);
-
-  const runComplianceAnalysis = () => {
+  const runComplianceAnalysis = useCallback(() => {
     setLoading(true);
     try {
       console.log('🔍 Compliance Analysis Debug Info:');
@@ -103,14 +105,14 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
         setComplianceResult({
           violations: [],
           riskScore: 0,
-          analysisView: opBillingData,
+          analysisView: opBillingData as Record<string, string | number>[],
           summaries: {
-            averageAmount: opBillingData.reduce((sum, row) => sum + (parseFloat(row.Total_Amount || row.total_amount || row.amount || 0)), 0) / opBillingData.length,
-            payerDistribution: opBillingData.reduce((acc, row) => {
-              const payer = row.Payer_Type || row.payer_type || row.PayerType || 'Unknown';
+            averageAmount: opBillingData.reduce((sum, row) => sum + (parseFloat(String(row.Total_Amount || row.total_amount || row.amount || 0))), 0) / opBillingData.length,
+            payerDistribution: (opBillingData as Record<string, unknown>[]).reduce((acc: Record<string, number>, row) => {
+              const payer = String((row as Record<string, unknown>).Payer_Type || (row as Record<string, unknown>).payer_type || (row as Record<string, unknown>).PayerType || 'Unknown');
               acc[payer] = (acc[payer] || 0) + 1;
               return acc;
-            }, {}),
+            }, {} as Record<string, number>) as Record<string, number>,
             violationRanking: []
           }
         });
@@ -120,7 +122,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       // Transform data to match expected field names for compliance analysis
       const transformedBillingData = opBillingData.map((row, index) => {
         // Helper function to find field value with flexible mapping
-        const getFieldValue = (possibleNames: string[], fallback?: any) => {
+        const getFieldValue = (possibleNames: string[], fallback?: string | number): string | number => {
           // First try exact matches
           for (const name of possibleNames) {
             if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
@@ -163,35 +165,35 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
             'Patient_Name', 'patient_name', 'PatientName', 'patient_name', 'Patient', 'patient', 'PATIENT',
             'Name', 'name', 'NAME', 'Full_Name', 'full_name', 'FullName', 'fullname',
             'Client_Name', 'client_name', 'ClientName', 'clientname',
-            'Customer_Name', 'customer_name', 'CustomerName', 'customername'
+            'Customer_Name', 'customer_name', 'CustomerName', 'customer_name'
           ], `Patient ${index + 1}`),
           Doctor_ID: getFieldValue(['Doctor_ID', 'doctor_id', 'DoctorId', 'doctor'], `D${String(index + 1).padStart(3, '0')}`),
           Doctor_Name: getFieldValue([
             'Doctor_Name', 'doctor_name', 'DoctorName', 'doctor_name', 'Doctor', 'doctor', 'DOCTOR',
-            'Name', 'name', 'NAME', 'Dr_Name', 'dr_name', 'DrName', 'drname',
-            'Physician_Name', 'physician_name', 'PhysicianName', 'physicianname',
-            'Provider_Name', 'provider_name', 'ProviderName', 'providername',
-            'Staff_Name', 'staff_name', 'StaffName', 'staffname'
+            'Name', 'name', 'NAME',             'Dr_Name', 'dr_name', 'DrName', 'dr_name',
+            'Physician_Name', 'physician_name', 'PhysicianName', 'physician_name',
+            'Provider_Name', 'provider_name', 'ProviderName', 'provider_name',
+            'Staff_Name', 'staff_name', 'StaffName', 'staff_name'
           ], `Doctor ${index + 1}`),
           Department: getFieldValue(['Department', 'department'], 'General'),
           Service_Code: getFieldValue(['Service_Code', 'service_code', 'ServiceCode', 'Procedure_Code', 'procedure_code'], 'OP100'),
           Service_Description: getFieldValue(['Service_Description', 'service_description', 'ServiceDescription', 'Procedure_Code'], 'General Consultation'),
-          Quantity: parseInt(getFieldValue(['Quantity', 'quantity'], 1)),
-          Unit_Price: parseFloat(getFieldValue(['Unit_Price', 'unit_price', 'UnitPrice', 'Amount', 'amount'], 100)),
-          Total_Amount: parseFloat(getFieldValue(['Total_Amount', 'total_amount', 'TotalAmount', 'Amount', 'amount'], 100)),
+          Quantity: parseInt(String(getFieldValue(['Quantity', 'quantity'], 1))),
+          Unit_Price: parseFloat(String(getFieldValue(['Unit_Price', 'unit_price', 'UnitPrice', 'Amount', 'amount'], 100))),
+          Total_Amount: parseFloat(String(getFieldValue(['Total_Amount', 'total_amount', 'TotalAmount', 'Amount', 'amount'], 100))),
           Payment_Status: getFieldValue(['Payment_Status', 'payment_status', 'PaymentStatus'], 'Pending'),
           Visit_ID: getFieldValue(['Visit_ID', 'visit_id', 'VisitId', 'visit'], `visit_${index + 1}`),
           Visit_Date: getFieldValue(['Visit_Date', 'visit_date', 'VisitDate', 'date', 'Bill_Date'], new Date().toISOString().split('T')[0]),
-          Age: parseInt(getFieldValue(['Age', 'age'], 30)),
+          Age: parseInt(String(getFieldValue(['Age', 'age'], 30))),
           Procedure_Code: getFieldValue(['Procedure_Code', 'procedure_code', 'ProcedureCode', 'Service_Code', 'service_code'], 'OP100'),
-          Consent_Flag: (getFieldValue(['Consent_Flag', 'consent_flag', 'ConsentFlag'], 'Y')).toString().toUpperCase(),
-          Payer_Type: (getFieldValue(['Payer_Type', 'payer_type', 'PayerType'], 'CASH')).toString().toUpperCase()
+          Consent_Flag: String(getFieldValue(['Consent_Flag', 'consent_flag', 'ConsentFlag'], 'Y')).toUpperCase(),
+          Payer_Type: String(getFieldValue(['Payer_Type', 'payer_type', 'PayerType'], 'CASH')).toUpperCase()
         };
       });
 
       const transformedDoctorData = doctorRosterData.map((row, index) => {
         // Helper function to find field value with flexible mapping
-        const getFieldValue = (possibleNames: string[], fallback?: any) => {
+        const getFieldValue = (possibleNames: string[], fallback?: string | number): string | number => {
           // First try exact matches
           for (const name of possibleNames) {
             if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
@@ -230,10 +232,10 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
           Doctor_ID: getFieldValue(['Doctor_ID', 'doctor_id', 'DoctorId', 'id'], `D${String(index + 1).padStart(3, '0')}`),
           Doctor_Name: getFieldValue([
             'Doctor_Name', 'doctor_name', 'DoctorName', 'name', 'Name', 'NAME',
-            'Doctor', 'doctor', 'DOCTOR', 'Dr_Name', 'dr_name', 'DrName', 'drname',
-            'Physician_Name', 'physician_name', 'PhysicianName', 'physicianname',
-            'Provider_Name', 'provider_name', 'ProviderName', 'providername',
-            'Staff_Name', 'staff_name', 'StaffName', 'staffname'
+            'Doctor', 'doctor', 'DOCTOR',             'Dr_Name', 'dr_name', 'DrName', 'dr_name',
+            'Physician_Name', 'physician_name', 'PhysicianName', 'physician_name',
+            'Provider_Name', 'provider_name', 'ProviderName', 'provider_name',
+            'Staff_Name', 'staff_name', 'StaffName', 'staff_name'
           ], `Doctor ${index + 1}`),
           Specialization: getFieldValue(['Specialty', 'specialty', 'Specialization', 'specialization'], 'General'),
           Department: getFieldValue(['Department', 'department'], 'General'),
@@ -250,24 +252,24 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       if (transformedBillingData.length > 0) {
         const sample = transformedBillingData[0];
         console.log('🔍 Billing Data Mapping Results:');
-        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', sample.Doctor_Name.startsWith('Doctor '), ')');
-        console.log('  Patient_Name found:', sample.Patient_Name, '(fallback used:', sample.Patient_Name.startsWith('Patient '), ')');
+        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', String(sample.Doctor_Name).startsWith('Doctor '), ')');
+        console.log('  Patient_Name found:', sample.Patient_Name, '(fallback used:', String(sample.Patient_Name).startsWith('Patient '), ')');
         console.log('  Total_Amount found:', sample.Total_Amount);
       }
       
       if (transformedDoctorData.length > 0) {
         const sample = transformedDoctorData[0];
         console.log('🔍 Doctor Data Mapping Results:');
-        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', sample.Doctor_Name.startsWith('Doctor '), ')');
+        console.log('  Doctor_Name found:', sample.Doctor_Name, '(fallback used:', String(sample.Doctor_Name).startsWith('Doctor '), ')');
         console.log('  Specialization found:', sample.Specialization);
       }
       
       // Check if we're using fallback data and warn the user
       const hasRealDoctorNames = transformedDoctorData.some(doc => 
-        doc.Doctor_Name && !doc.Doctor_Name.startsWith('Doctor ')
+        doc.Doctor_Name && !String(doc.Doctor_Name).startsWith('Doctor ')
       );
       const hasRealPatientNames = transformedBillingData.some(bill => 
-        bill.Patient_Name && !bill.Patient_Name.startsWith('Patient ')
+        bill.Patient_Name && !String(bill.Patient_Name).startsWith('Patient ')
       );
       
       if (!hasRealDoctorNames) {
@@ -357,7 +359,13 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [opBillingData, doctorRosterData]);
+
+  useEffect(() => {
+    if (opBillingData && doctorRosterData) {
+      runComplianceAnalysis();
+    }
+  }, [opBillingData, doctorRosterData, runComplianceAnalysis]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -439,7 +447,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       violationBreakdown: complianceResult.summaries.violationRanking,
       payerDistribution: complianceResult.summaries.payerDistribution,
       topViolations: complianceResult.violations.slice(0, 10),
-      recommendations: aiInsights
+      recommendations: []
     };
     
     const csvContent = [
@@ -489,7 +497,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
         });
       }
       const stats = doctorStats.get(doctorId);
-      stats.revenue += parseFloat(row.Total_Amount) || 0;
+      stats.revenue += parseFloat(String(row.Total_Amount)) || 0;
       stats.patients.add(row.Patient_ID);
     });
     
@@ -570,11 +578,11 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
 
       {/* Data Quality Warning Banner */}
       {(() => {
-        const hasRealDoctorNames = complianceResult.analysisView.some((row: any) => 
-          row.Doctor_Name && !row.Doctor_Name.startsWith('Doctor ')
+        const hasRealDoctorNames = complianceResult.analysisView.some((row: BillingRecord) => 
+          row.Doctor_Name && !String(row.Doctor_Name).startsWith('Doctor ')
         );
-        const hasRealPatientNames = complianceResult.analysisView.some((row: any) => 
-          row.Patient_Name && !row.Patient_Name.startsWith('Patient ')
+        const hasRealPatientNames = complianceResult.analysisView.some((row: BillingRecord) => 
+          row.Patient_Name && !String(row.Patient_Name).startsWith('Patient ')
         );
         
         if (!hasRealDoctorNames || !hasRealPatientNames) {
@@ -1333,7 +1341,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                             complianceResult.analysisView.forEach(row => {
                               const doctorId = row.Doctor_ID;
                               const doctorName = row.Doctor_Name || 'Unknown';
-                              const amount = parseFloat(row.Total_Amount || 0);
+                              const amount = parseFloat(String(row.Total_Amount || 0));
                               const patientId = row.Patient_ID;
                               
                               if (doctorId) {
@@ -1387,7 +1395,7 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                               
                               if (uniqueDoctors.size > 0) {
                                 return Array.from(uniqueDoctors).map((doctorInfo, index) => {
-                                  const [doctorId, doctorName] = doctorInfo.split('|');
+                                  const [doctorId, doctorName] = String(doctorInfo).split('|');
                                   return {
                                     doctor: doctorName,
                                     revenue: 10000 + (index * 5000),

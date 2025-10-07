@@ -40,12 +40,6 @@ export const AICaption: React.FC<AICaptionProps> = ({
     setError(null);
 
     try {
-      // CMS Medicare - local
-      if (industry === 'cms_medicare') {
-        const localInsights = generateLocalCMSMedicareInsights(data, chartType);
-        setInsights(localInsights);
-        return;
-      }
 
       // Other industries - backend
       const sampleData = data.slice(0, 20);
@@ -472,7 +466,7 @@ export const AICaption: React.FC<AICaptionProps> = ({
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800 mb-6">
       <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-4 flex items-center">
         <Brain className="w-5 h-5 mr-2" />
-        {industry === 'cms_medicare' ? 'CMS Medicare Insights' : `AI Business Insights (${insights.length} captions)`}
+        AI Business Insights (${insights.length} captions)
       </h3>
       <div className="space-y-3">
         {insights.map((insight, index) => (

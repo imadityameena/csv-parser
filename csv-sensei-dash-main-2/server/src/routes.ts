@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { RecordModel } from './models/Record';
+import { aiService } from './services/aiService.js';
 
 export const router = Router();
 
@@ -244,6 +245,110 @@ router.post('/records', async (req, res) => {
 router.delete('/records/:id', async (req, res) => {
   await RecordModel.findByIdAndDelete(req.params.id);
   res.status(204).end();
+});
+
+// AI Chat endpoints
+router.post('/ai/chat', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question || typeof question !== 'string') {
+      return res.status(400).json({ 
+        error: 'Question is required and must be a string' 
+      });
+    }
+
+    const answer = await aiService.answerQuestion(question);
+    
+    res.json({ 
+      answer,
+      question,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in AI chat:', error);
+    res.status(500).json({ 
+      error: 'Failed to process question',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Initialize AI service
+router.post('/ai/initialize', async (req, res) => {
+  try {
+    await aiService.initializeVectorStore();
+    res.json({ 
+      message: 'AI service initialized successfully',
+      knowledgeBaseSize: aiService.getKnowledgeBaseSize()
+    });
+  } catch (error) {
+    console.error('Error initializing AI service:', error);
+    res.status(500).json({ 
+      error: 'Failed to initialize AI service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Train AI agent
+router.post('/ai/train', async (req, res) => {
+  try {
+    const { epochs = 5 } = req.body;
+    
+    if (typeof epochs !== 'number' || epochs < 1 || epochs > 20) {
+      return res.status(400).json({ 
+        error: 'Epochs must be a number between 1 and 20' 
+      });
+    }
+
+    await aiService.trainAgent(epochs);
+    
+    res.json({ 
+      message: `AI agent trained successfully with ${epochs} epochs`,
+      knowledgeBaseSize: aiService.getKnowledgeBaseSize()
+    });
+  } catch (error) {
+    console.error('Error training AI agent:', error);
+    res.status(500).json({ 
+      error: 'Failed to train AI agent',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get supported questions
+router.get('/ai/questions', async (req, res) => {
+  try {
+    const questions = aiService.getSupportedQuestions();
+    res.json({ 
+      questions,
+      count: questions.length
+    });
+  } catch (error) {
+    console.error('Error getting supported questions:', error);
+    res.status(500).json({ 
+      error: 'Failed to get supported questions',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get AI service status
+router.get('/ai/status', async (req, res) => {
+  try {
+    res.json({ 
+      initialized: aiService.getKnowledgeBaseSize() > 0,
+      knowledgeBaseSize: aiService.getKnowledgeBaseSize(),
+      supportedQuestions: aiService.getSupportedQuestions().length
+    });
+  } catch (error) {
+    console.error('Error getting AI status:', error);
+    res.status(500).json({ 
+      error: 'Failed to get AI status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 

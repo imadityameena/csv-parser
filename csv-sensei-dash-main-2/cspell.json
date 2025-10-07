@@ -3,8 +3,6 @@
   "language": "en",
   "words": [
     "opbilling",
-    "pharma",
-    "Pharma",
     "Rndrng",
     "Prvdr",
     "Abrvtn",
@@ -23,7 +21,6 @@
     "cost",
     "selling",
     "quantity",
-    "retail",
     "billing",
     "roster",
     "compliance",
@@ -581,8 +578,6 @@
       "filename": "**/*.ts",
       "words": [
         "opbilling",
-        "pharma",
-        "Pharma",
         "Rndrng",
         "Prvdr",
         "Abrvtn",
@@ -596,8 +591,6 @@
       "filename": "**/*.tsx",
       "words": [
         "opbilling",
-        "pharma",
-        "Pharma",
         "Rndrng",
         "Prvdr",
         "Abrvtn",
