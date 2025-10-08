@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { router as api } from './routes';
-import { aiService } from './services/aiService.js';
 
 const app = express();
 app.use(cors({ 
@@ -25,27 +24,14 @@ if (!mongoUri) {
   process.exit(1);
 }
 
-mongoose.connect(mongoUri).then(async () => {
+mongoose.connect(mongoUri).then(() => {
   console.log('MongoDB connected');
-  
-  // Initialize AI service
-  try {
-    console.log('🤖 Initializing AI service...');
-    await aiService.initializeVectorStore();
-    console.log(`✅ AI service initialized with ${aiService.getKnowledgeBaseSize()} questions`);
-  } catch (error) {
-    console.error('❌ Failed to initialize AI service:', error);
-    // Don't exit, just log the error - AI features will be disabled
-  }
   
   app.listen(port, () => {
     console.log(`🚀 API server running on port ${port}`);
-    console.log(`📊 AI Dashboard Assistant ready with ${aiService.getKnowledgeBaseSize()} supported questions`);
+    console.log(`📊 CSV Sensei Dashboard API ready`);
   });
 }).catch(err => {
   console.error('Mongo connect error', err);
   process.exit(1);
 });
-
-
-
