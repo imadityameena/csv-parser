@@ -7,7 +7,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { buildMonthlySeries, movingAverageForecast, detectAnomalies } from '@/utils/analytics';
 import { KPIAlerts } from '@/components/KPIAlerts';
-import { Chatbot } from './Chatbot';
+import { InlineChatbot } from './InlineChatbot';
 
 interface BillingDashboardProps {
   data: any[];
@@ -329,6 +329,30 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
 
         {/* KPI Alerts */}
         <KPIAlerts data={data} industry={"opbilling"} />
+
+        {/* AI Assistant */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <TrendingUp className="w-6 h-6 text-purple-600 mr-2" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              AI Assistant
+            </h2>
+          </div>
+          
+          <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-6">
+              <InlineChatbot 
+                context={{
+                  industry: 'healthcare',
+                  dataType: 'billing',
+                  currentDashboard: 'billing'
+                }}
+                data={data}
+                additionalData={doctorRosterData}
+              />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Specialty Performance KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -906,15 +930,6 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
           </CardContent>
         </Card>
       </div>
-      
-      {/* AI Chatbot */}
-      <Chatbot 
-        context={{
-          industry: 'healthcare',
-          dataType: 'billing',
-          currentDashboard: 'billing'
-        }}
-      />
     </div>
   );
 };

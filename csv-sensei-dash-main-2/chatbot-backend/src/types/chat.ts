@@ -18,6 +18,15 @@ export interface ChatRequest {
     dataType?: string;
     currentDashboard?: string;
   };
+  dataAnalysis?: {
+    summary: string;
+    insights: string[];
+    dataFields: string[];
+    recordCount: number;
+    dataTypes: Record<string, string>;
+    sampleData: any[];
+    statistics: Record<string, any>;
+  };
 }
 
 export interface ChatResponse {

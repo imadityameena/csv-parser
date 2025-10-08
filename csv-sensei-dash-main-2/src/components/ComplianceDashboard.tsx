@@ -8,7 +8,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, LineChart, Line, AreaChart, Area, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { runCompliance, Violation, ComplianceResult } from '@/utils/compliance';
 import { topNBySum, groupBy, average, detectAnomalies } from '@/utils/analytics';
-import { Chatbot } from './Chatbot';
+import { InlineChatbot } from './InlineChatbot';
 
 interface BillingRecord {
   [key: string]: string | number | undefined;
@@ -574,6 +574,34 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* AI Assistant */}
+        {complianceResult && complianceResult.analysisView && complianceResult.analysisView.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center mb-4">
+              <TrendingUp className="w-6 h-6 text-purple-600 mr-2" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                AI Assistant
+              </h2>
+            </div>
+            
+            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-6">
+                <InlineChatbot 
+                  context={{
+                    industry: 'healthcare',
+                    dataType: 'compliance',
+                    currentDashboard: 'compliance'
+                  }}
+                  data={complianceResult.analysisView}
+                  additionalData={doctorRosterData || []}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Data Quality Warning Banner */}
@@ -1591,15 +1619,6 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
           </div>
         </div>
       </div>
-      
-      {/* AI Chatbot */}
-      <Chatbot 
-        context={{
-          industry: 'healthcare',
-          dataType: 'compliance',
-          currentDashboard: 'compliance'
-        }}
-      />
     </div>
   );
 };

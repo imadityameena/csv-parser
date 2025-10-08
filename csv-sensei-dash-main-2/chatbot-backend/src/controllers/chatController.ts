@@ -14,7 +14,18 @@ export class ChatController {
 
   async sendMessage(req: Request, res: Response): Promise<void> {
     try {
-      const { message, conversationId, context } = req.body as ChatRequest;
+      const { message, conversationId, context, dataAnalysis } = req.body as ChatRequest;
+
+      // Debug: Log the received request
+      console.log('🎯 Chat Controller Debug:');
+      console.log('Message:', message);
+      console.log('Context:', context);
+      console.log('Data Analysis available:', !!dataAnalysis);
+      if (dataAnalysis) {
+        console.log('Data Analysis summary:', dataAnalysis.summary);
+        console.log('Record count:', dataAnalysis.recordCount);
+        console.log('Data fields:', dataAnalysis.dataFields);
+      }
 
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         res.status(400).json({
@@ -54,6 +65,7 @@ export class ChatController {
         message: message.trim(),
         conversationId: conversation.id,
         context,
+        dataAnalysis,
       };
 
       const response = await this.openaiService.generateResponse(chatRequest, history);

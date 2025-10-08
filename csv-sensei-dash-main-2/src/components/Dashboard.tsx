@@ -9,7 +9,7 @@ import { KPIAlerts } from './KPIAlerts';
 import { ComplianceDashboard } from './ComplianceDashboard';
 import { DoctorRosterDashboard } from './DoctorRosterDashboard';
 import { BillingDashboard } from './BillingDashboard';
-import { Chatbot } from './Chatbot';
+import { InlineChatbot } from './InlineChatbot';
 
 interface DashboardProps {
   data: any[];
@@ -244,6 +244,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* KPI Alerts */}
         <KPIAlerts data={transformedData || data} industry={industry} />
 
+        {/* AI Assistant */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <TrendingUp className="w-6 h-6 text-purple-600 mr-2" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              AI Assistant
+            </h2>
+          </div>
+          
+          <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-6">
+              <InlineChatbot 
+                context={{
+                  industry: industry,
+                  dataType: industry === 'others' ? 'general' : industry,
+                  currentDashboard: 'business-intelligence'
+                }}
+                data={transformedData || data}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
         {/* AI-Generated Insights */}
         <div className="mb-8">
           <div className="flex items-center mb-4">
@@ -350,15 +373,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
       </div>
-      
-      {/* AI Chatbot */}
-      <Chatbot 
-        context={{
-          industry: industry,
-          dataType: industry === 'others' ? 'general' : industry,
-          currentDashboard: 'business-intelligence'
-        }}
-      />
     </div>
   );
 };

@@ -26,6 +26,18 @@ export class OpenAIService {
     const startTime = Date.now();
     
     try {
+      // Debug: Log the request data
+      console.log('🤖 OpenAI Service Debug:');
+      console.log('Request message:', request.message);
+      console.log('Request context:', request.context);
+      console.log('Data analysis available:', !!request.dataAnalysis);
+      if (request.dataAnalysis) {
+        console.log('Data summary:', request.dataAnalysis.summary);
+        console.log('Record count:', request.dataAnalysis.recordCount);
+        console.log('Data fields:', request.dataAnalysis.dataFields);
+        console.log('Sample data:', request.dataAnalysis.sampleData);
+      }
+
       // Build conversation context
       const messages = this.buildConversationContext(request, conversationHistory);
       
@@ -69,7 +81,7 @@ export class OpenAIService {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
     // System message with context about CSV Sensei Dashboard
-    const systemMessage = this.buildSystemMessage(request.context);
+    const systemMessage = this.buildSystemMessage(request.context, request.dataAnalysis);
     messages.push(systemMessage);
 
     // Add conversation history (last 10 messages to stay within token limits)
@@ -90,7 +102,10 @@ export class OpenAIService {
     return messages;
   }
 
-  private buildSystemMessage(context?: ChatRequest['context']): OpenAI.Chat.Completions.ChatCompletionMessageParam {
+  private buildSystemMessage(
+    context?: ChatRequest['context'], 
+    dataAnalysis?: ChatRequest['dataAnalysis']
+  ): OpenAI.Chat.Completions.ChatCompletionMessageParam {
     const baseContext = `You are an AI assistant for the CSV Sensei Dashboard, a business intelligence and data analysis platform. You help users understand their data, provide insights, and answer questions about their CSV files and dashboard metrics.
 
 Key capabilities:
@@ -107,7 +122,8 @@ Guidelines:
 - Use clear, concise language
 - If you don't know something, say so rather than guessing
 - Focus on data-driven insights and business value
-- Consider the context of the user's current dashboard and data type`;
+- Consider the context of the user's current dashboard and data type
+- Use the provided data analysis to give accurate, data-driven answers`;
 
     let contextSpecific = '';
     if (context) {
@@ -122,9 +138,34 @@ Guidelines:
       }
     }
 
+    let dataContext = '';
+    if (dataAnalysis) {
+      dataContext = `\n\nCURRENT DATA ANALYSIS:
+Dataset Summary: ${dataAnalysis.summary}
+Record Count: ${dataAnalysis.recordCount}
+Data Fields: ${dataAnalysis.dataFields.join(', ')}
+Data Types: ${JSON.stringify(dataAnalysis.dataTypes, null, 2)}
+Key Insights: ${dataAnalysis.insights.join('; ')}
+Sample Data: ${JSON.stringify(dataAnalysis.sampleData, null, 2)}
+Statistics: ${JSON.stringify(dataAnalysis.statistics, null, 2)}
+
+IMPORTANT: Use this actual data to provide accurate, specific answers. When users ask about their data, refer to these actual values and statistics.`;
+
+      // Add specific guidance based on data type
+      if (dataAnalysis.dataFields.some(f => f.toLowerCase().includes('patient'))) {
+        dataContext += `\n\nPATIENT DATA DETECTED: You can answer questions about patient counts, demographics, and patient-related metrics.`;
+      }
+      if (dataAnalysis.dataFields.some(f => f.toLowerCase().includes('doctor'))) {
+        dataContext += `\n\nDOCTOR DATA DETECTED: You can answer questions about doctor counts, specializations, and staff metrics.`;
+      }
+      if (dataAnalysis.dataFields.some(f => f.toLowerCase().includes('amount') || f.toLowerCase().includes('revenue'))) {
+        dataContext += `\n\nFINANCIAL DATA DETECTED: You can answer questions about revenue, amounts, totals, and financial metrics.`;
+      }
+    }
+
     return {
       role: 'system',
-      content: baseContext + contextSpecific,
+      content: baseContext + contextSpecific + dataContext,
     };
   }
 
