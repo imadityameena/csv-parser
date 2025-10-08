@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
-import { AIQueryBar } from '@/components/AIQueryBar';
 import { buildMonthlySeries, movingAverageForecast } from '@/utils/analytics';
 import { KPIAlerts } from '@/components/KPIAlerts';
+import { Chatbot } from './Chatbot';
 
 interface DoctorRosterDashboardProps {
   data: any[];
@@ -718,6 +718,15 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
           </CardContent>
         </Card>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot 
+        context={{
+          industry: 'healthcare',
+          dataType: 'doctor-roster',
+          currentDashboard: 'doctor-roster'
+        }}
+      />
     </div>
   );
 };

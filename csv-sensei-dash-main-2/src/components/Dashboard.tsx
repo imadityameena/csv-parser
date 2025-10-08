@@ -5,12 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, LineChart, Line, AreaChart, Area, ComposedChart } from 'recharts';
-import { AICaption } from './AICaption';
 import { KPIAlerts } from './KPIAlerts';
 import { ComplianceDashboard } from './ComplianceDashboard';
 import { DoctorRosterDashboard } from './DoctorRosterDashboard';
 import { BillingDashboard } from './BillingDashboard';
-import { AIChat } from './AIChat';
+import { Chatbot } from './Chatbot';
 
 interface DashboardProps {
   data: any[];
@@ -350,20 +349,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </Card>
         </div>
 
-        {/* AI Caption */}
-        {aiCaptionEnabled && (
-          <AICaption 
-            data={transformedData || data} 
-            industry={industry}
-            chartType="dashboard"
-          />
-        )}
-
-        {/* AI Chat Assistant */}
-        <div className="mt-8">
-          <AIChat />
-        </div>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot 
+        context={{
+          industry: industry,
+          dataType: industry === 'others' ? 'general' : industry,
+          currentDashboard: 'business-intelligence'
+        }}
+      />
     </div>
   );
 };

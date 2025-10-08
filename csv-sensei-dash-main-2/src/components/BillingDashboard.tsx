@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, ScatterChart, Scatter, ZAxis } from 'recharts';
-import { AIQueryBar } from '@/components/AIQueryBar';
 import { buildMonthlySeries, movingAverageForecast, detectAnomalies } from '@/utils/analytics';
 import { KPIAlerts } from '@/components/KPIAlerts';
+import { Chatbot } from './Chatbot';
 
 interface BillingDashboardProps {
   data: any[];
@@ -906,6 +906,15 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
           </CardContent>
         </Card>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot 
+        context={{
+          industry: 'healthcare',
+          dataType: 'billing',
+          currentDashboard: 'billing'
+        }}
+      />
     </div>
   );
 };

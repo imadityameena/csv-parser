@@ -5,6 +5,9 @@ import { componentTagger } from "lovable-tagger";
 
 // Vite config
 export default defineConfig(({ mode }) => ({
+  define: {
+    'import.meta.env.VITE_CHATBOT_API_URL': JSON.stringify('/chatbot-api/chat'),
+  },
   server: {
     host: "::",
     port: 8080,
@@ -12,6 +15,11 @@ export default defineConfig(({ mode }) => ({
       "/api": {
         target: "http://localhost:4000",
         changeOrigin: true,
+      },
+      "/chatbot-api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/chatbot-api/, '/api'),
       },
     },
   },

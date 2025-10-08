@@ -7,8 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, LineChart, Line, AreaChart, Area, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { runCompliance, Violation, ComplianceResult } from '@/utils/compliance';
-import { AIQueryBar } from '@/components/AIQueryBar';
 import { topNBySum, groupBy, average, detectAnomalies } from '@/utils/analytics';
+import { Chatbot } from './Chatbot';
 
 interface BillingRecord {
   [key: string]: string | number | undefined;
@@ -644,8 +644,6 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       })()}
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* AI Q&A */}
-        <AIQueryBar data={complianceResult.analysisView} context={'billing'} />
 
         {/* Data Processing Status */}
         {complianceResult?.analysisView?.length > 0 && (
@@ -1593,6 +1591,15 @@ export const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot 
+        context={{
+          industry: 'healthcare',
+          dataType: 'compliance',
+          currentDashboard: 'compliance'
+        }}
+      />
     </div>
   );
 };

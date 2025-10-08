@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle, Info, ArrowLeft, Home, Zap, Shield, TrendingUp, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AISchemaFixer } from './AISchemaFixer';
 import type { ValidationError, ValidationSummary } from '@/utils/validationEngine';
 
 interface ValidationResultsProps {
@@ -77,20 +76,6 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
     }
   };
 
-  if (showAIFixer) {
-    return (
-      <AISchemaFixer
-        csvHeaders={csvHeaders}
-        selectedIndustry={selectedIndustry}
-        validationErrors={errors}
-        onSuccess={onProceedWithAI}
-        onBack={() => setShowAIFixer(false)}
-        onGoHome={onGoHome}
-        onChangeFile={onBack}
-        onContinueWithErrorData={onContinueWithErrorData}
-      />
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -231,22 +216,13 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
               Continue to Analysis
             </Button>
           ) : (
-            <>
-              <Button 
-                onClick={() => setShowAIFixer(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 flex items-center"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Fix with AI
-              </Button>
-              <Button 
-                onClick={onContinueWithErrorData}
-                variant="outline"
-                className="px-6 py-3"
-              >
-                Continue Anyway
-              </Button>
-            </>
+            <Button 
+              onClick={onContinueWithErrorData}
+              variant="outline"
+              className="px-6 py-3"
+            >
+              Continue Anyway
+            </Button>
           )}
           
           <Button 
