@@ -324,9 +324,6 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* AI Q&A */}
-        <AIQueryBar data={data} context={'billing'} />
-
         {/* KPI Alerts */}
         <KPIAlerts data={data} industry={"opbilling"} />
 

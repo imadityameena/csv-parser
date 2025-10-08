@@ -8,6 +8,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
+  isLoading: boolean;
   login: (userData: User) => void;
   logout: () => void;
 }
@@ -29,17 +30,21 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check localStorage on mount
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const storedIsLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const company = localStorage.getItem('userCompany');
     const email = localStorage.getItem('userEmail');
 
-    if (isLoggedIn && company && email) {
+    if (storedIsLoggedIn && company && email) {
       setUser({ company, email });
       setIsLoggedIn(true);
     }
+    
+    // Mark loading as complete
+    setIsLoading(false);
   }, []);
 
   const login = (userData: User) => {
@@ -61,6 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = {
     user,
     isLoggedIn,
+    isLoading,
     login,
     logout
   };

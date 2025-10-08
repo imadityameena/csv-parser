@@ -209,9 +209,6 @@ export const DoctorRosterDashboard: React.FC<DoctorRosterDashboardProps> = ({ da
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* AI Q&A */}
-        <AIQueryBar data={data} context={'roster'} />
-
         {/* KPI Alerts */}
         <KPIAlerts data={data} industry={"doctor_roster"} />
 
