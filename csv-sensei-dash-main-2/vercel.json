@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "server/src/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["server/**"]
+      }
+    },
+    {
+      "src": "chatbot-backend/src/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["chatbot-backend/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/src/index.ts"
+    },
+    {
+      "src": "/chatbot-api/(.*)",
+      "dest": "/chatbot-backend/src/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "server/src/index.ts": {
+      "maxDuration": 30
+    },
+    "chatbot-backend/src/index.ts": {
+      "maxDuration": 30
+    }
+  }
+}

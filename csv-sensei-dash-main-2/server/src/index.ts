@@ -6,7 +6,15 @@ import { router as api } from './routes';
 import { aiService } from './services/aiService.js';
 
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ 
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://*.vercel.app',
+    'https://csv-sensei-dash.vercel.app'
+  ], 
+  credentials: true 
+}));
 app.use(express.json());
 app.use('/api', api);
 
