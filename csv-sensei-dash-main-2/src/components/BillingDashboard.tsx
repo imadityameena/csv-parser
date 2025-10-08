@@ -735,7 +735,14 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ data, onBack
                             const intensity = Math.round((val / max) * 255);
                             const bg = `rgba(34,197,94,${Math.max(0.1, val / max)})`;
                             return (
-                              <td key={py} className="p-2" style={{ backgroundColor: bg }}>
+                              <td 
+                                key={py} 
+                                className="p-2" 
+                                style={{ 
+                                  backgroundColor: bg,
+                                  color: intensity > 128 ? 'white' : 'black'
+                                }}
+                              >
                                 ${val.toLocaleString()}
                               </td>
                             );
